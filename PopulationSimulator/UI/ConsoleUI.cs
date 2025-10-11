@@ -6,6 +6,7 @@ public class ConsoleUI
 {
     private int _lastEventCount = 0;
     private DateTime _lastUpdate = DateTime.Now;
+    private DateTime _lastClear = DateTime.Now;
     
     public void Initialize()
     {
@@ -21,6 +22,14 @@ public class ConsoleUI
             return;
         
         _lastUpdate = DateTime.Now;
+        
+        // Periodically clear screen completely (every 5 seconds) to handle window resizing
+        bool shouldClear = (DateTime.Now - _lastClear).TotalSeconds >= 5;
+        if (shouldClear)
+        {
+            Console.Clear();
+            _lastClear = DateTime.Now;
+        }
         
         Console.SetCursorPosition(0, 0);
         
@@ -106,6 +115,63 @@ public class ConsoleUI
         
         Console.ResetColor();
         
+        // Job Statistics
+        if (stats.TopJobs.Any())
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("\n╔══════════════════════════════════════════════════════════════════════════╗");
+            Console.WriteLine("║                         TOP OCCUPATIONS                                  ║");
+            Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════╝");
+            Console.ResetColor();
+            
+            foreach (var job in stats.TopJobs.Take(5))
+            {
+                Console.WriteLine($"  {job.JobName,-30} {job.Count,5} people");
+            }
+            
+            // Clear remaining job lines
+            for (int i = stats.TopJobs.Count; i < 5; i++)
+            {
+                Console.WriteLine(new string(' ', 78));
+            }
+        }
+        
+        // Family Trees
+        if (stats.FamilyTrees.Any())
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("\n╔══════════════════════════════════════════════════════════════════════════╗");
+            Console.WriteLine("║                         ACTIVE FAMILIES                                  ║");
+            Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════╝");
+            Console.ResetColor();
+            
+            foreach (var tree in stats.FamilyTrees)
+            {
+                string status = tree.IsRootAlive ? "Alive" : "Deceased";
+                Console.ForegroundColor = tree.IsRootAlive ? ConsoleColor.Green : ConsoleColor.DarkGray;
+                Console.WriteLine($"\n  {tree.RootName} (Age {tree.RootAge}, {status}) - {tree.LivingDescendants} living descendants");
+                Console.ResetColor();
+                
+                // Show tree members (limit display)
+                var displayMembers = tree.Members.Take(15).ToList();
+                foreach (var member in displayMembers)
+                {
+                    string indent = new string(' ', member.Level * 2);
+                    string marker = member.Level == 0 ? "┌─" : member.Level == 1 ? "├─" : "  ├─";
+                    string aliveStatus = member.IsAlive ? "✓" : "✗";
+                    Console.ForegroundColor = member.IsAlive ? ConsoleColor.White : ConsoleColor.DarkGray;
+                    Console.WriteLine($"  {indent}{marker} {aliveStatus} {member.Name} (Age {member.Age})");
+                }
+                
+                if (tree.Members.Count > 15)
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkGray;
+                    Console.WriteLine($"     ... and {tree.Members.Count - 15} more family members");
+                }
+            }
+            Console.ResetColor();
+        }
+        
         // Controls
         Console.ForegroundColor = ConsoleColor.DarkGray;
         Console.WriteLine("\n╔══════════════════════════════════════════════════════════════════════════╗");
@@ -113,6 +179,12 @@ public class ConsoleUI
         Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════╝");
         Console.WriteLine($"  Speed: {simulationSpeed}x | Press [+] to speed up, [-] to slow down, [Q] to quit");
         Console.ResetColor();
+        
+        // Add some blank lines to clear any leftover content
+        for (int i = 0; i < 5; i++)
+        {
+            Console.WriteLine(new string(' ', 78));
+        }
         
         _lastEventCount = stats.RecentEvents.Count;
     }

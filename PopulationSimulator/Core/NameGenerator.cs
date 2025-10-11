@@ -10,7 +10,18 @@ public class NameGenerator
         "Abraham", "Isaac", "Jacob", "Joseph", "Moses", "David", "Solomon", "Samuel",
         "Daniel", "Ezra", "Elijah", "Isaiah", "Jeremiah", "Joshua", "Caleb", "Aaron",
         "Benjamin", "Reuben", "Simeon", "Levi", "Judah", "Dan", "Naphtali", "Gad",
-        "Asher", "Issachar", "Zebulun", "Ephraim", "Manasseh", "Micah", "Amos"
+        "Asher", "Issachar", "Zebulun", "Ephraim", "Manasseh", "Micah", "Amos",
+        "Jonah", "Joel", "Obadiah", "Malachi", "Hosea", "Nahum", "Habakkuk", "Zephaniah",
+        "Haggai", "Zechariah", "Saul", "Jonathan", "Absalom", "Adonijah", "Rehoboam",
+        "Jeroboam", "Ahab", "Jehu", "Hezekiah", "Josiah", "Jeremiah", "Ezekiel",
+        "Marcus", "Lucius", "Gaius", "Julius", "Augustus", "Titus", "Maximus", "Antonius",
+        "Octavius", "Claudius", "Nero", "Constantine", "Hadrian", "Trajan", "Aurelius",
+        "Alexander", "Philip", "Perseus", "Leonidas", "Achilles", "Hector", "Odysseus",
+        "Theseus", "Jason", "Hercules", "Apollo", "Ares", "Atlas", "Orion", "Perseus",
+        "William", "James", "Thomas", "Robert", "John", "Michael", "Richard", "Charles",
+        "Henry", "Edward", "George", "Arthur", "Frederick", "Albert", "Victor", "Edmund",
+        "Ethan", "Noah", "Liam", "Mason", "Lucas", "Oliver", "Elijah", "Logan", "Aiden",
+        "Jackson", "Sebastian", "Alexander", "Benjamin", "Matthew", "Samuel", "Andrew"
     };
     
     private static readonly string[] FemaleFirstNames = 
@@ -18,7 +29,17 @@ public class NameGenerator
         "Eve", "Sarah", "Rebecca", "Rachel", "Leah", "Miriam", "Deborah", "Ruth",
         "Esther", "Judith", "Hannah", "Naomi", "Abigail", "Bathsheba", "Tamar",
         "Dinah", "Zilpah", "Bilhah", "Keturah", "Hagar", "Mary", "Elizabeth",
-        "Martha", "Lydia", "Priscilla", "Phoebe", "Anna", "Joanna", "Susanna"
+        "Martha", "Lydia", "Priscilla", "Phoebe", "Anna", "Joanna", "Susanna",
+        "Salome", "Dorcas", "Rhoda", "Chloe", "Julia", "Claudia", "Eunice", "Lois",
+        "Jezebel", "Athaliah", "Jochebed", "Zipporah", "Rahab", "Delilah", "Orpah",
+        "Peninnah", "Michal", "Merab", "Abishag", "Abigail", "Rizpah", "Haggith",
+        "Helena", "Julia", "Livia", "Octavia", "Agrippina", "Valeria", "Cornelia",
+        "Fulvia", "Clodia", "Faustina", "Lucretia", "Portia", "Tullia", "Servilia",
+        "Athena", "Artemis", "Aphrodite", "Hera", "Demeter", "Persephone", "Hecate",
+        "Cassandra", "Penelope", "Helen", "Andromeda", "Ariadne", "Elektra", "Medea",
+        "Emma", "Olivia", "Ava", "Isabella", "Sophia", "Charlotte", "Mia", "Amelia",
+        "Harper", "Evelyn", "Abigail", "Emily", "Elizabeth", "Sofia", "Avery", "Ella",
+        "Scarlett", "Grace", "Chloe", "Victoria", "Riley", "Aria", "Lily", "Aurora"
     };
     
     private static readonly string[] CityNames = 
@@ -26,7 +47,13 @@ public class NameGenerator
         "Eden", "Nod", "Enoch", "Babel", "Ur", "Haran", "Damascus", "Jericho",
         "Jerusalem", "Bethel", "Hebron", "Beersheba", "Shechem", "Shiloh", "Gilgal",
         "Ramah", "Mizpah", "Gibeah", "Joppa", "Tyre", "Sidon", "Nineveh", "Babylon",
-        "Memphis", "Thebes", "Athens", "Sparta", "Rome", "Carthage", "Alexandria"
+        "Memphis", "Thebes", "Athens", "Sparta", "Rome", "Carthage", "Alexandria",
+        "Corinth", "Ephesus", "Antioch", "Pergamon", "Smyrna", "Sardis", "Philadelphia",
+        "Laodicea", "Colossae", "Thyatira", "Troy", "Mycenae", "Knossos", "Delphi",
+        "Olympia", "Marathon", "Thermopylae", "Syracuse", "Pompeii", "Herculaneum",
+        "Ostia", "Ravenna", "Milan", "Florence", "Venice", "Naples", "Genoa", "Pisa",
+        "Byzantium", "Constantinople", "Adrianople", "Nicaea", "Chalcedon", "Tarsus",
+        "Caesarea", "Petra", "Palmyra", "Persepolis", "Susa", "Ecbatana", "Ctesiphon"
     };
     
     private static readonly string[] CountryNames = 
