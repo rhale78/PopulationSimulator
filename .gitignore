@@ -57,3 +57,17 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+/.vs/PopulationSimulator/DesignTimeBuild/.dtbcache.v2
+/.vs/PopulationSimulator/FileContentIndex/d1a17790-5fee-49d4-895b-4678fbbfed13.vsidx
+/.vs/PopulationSimulator/v18/.suo
+/.vs/PopulationSimulator/v18/DocumentLayout.backup.json
+/.vs/PopulationSimulator/v18/DocumentLayout.json
+/.vs/PopulationSimulator.slnx/FileContentIndex/89041890-be4e-42da-8c6e-1750d5544f8c.vsidx
+/.vs/PopulationSimulator.slnx/v18/.wsuo
+/.vs/PopulationSimulator.slnx/v18/DocumentLayout.backup.json
+/.vs/PopulationSimulator.slnx/v18/DocumentLayout.json
+/.vs/slnx.sqlite
+/.vs/CopilotSnapshots
+/.vs/PopulationSimulator/copilot-chat/bd2c0eb4/sessions
+/.vs/PopulationSimulator/FileContentIndex
+/.vs
