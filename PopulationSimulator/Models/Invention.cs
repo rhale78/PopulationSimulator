@@ -9,4 +9,6 @@ public class Invention
     public long? InventorId { get; set; }
     public int RequiredIntelligence { get; set; }
     public string Category { get; set; } = string.Empty;
+    public int HealthBonus { get; set; }
+    public int LifespanBonus { get; set; }
 }
