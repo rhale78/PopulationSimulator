@@ -32,13 +32,16 @@ public class Simulator
     private int _generationNumber = 0;
     private int _syncCounter = 0;
     private const int SYNC_INTERVAL = 100; // Sync every 100 days
+
+    private long? _adamId;
+    private long? _eveId;
     
     public Simulator()
     {
         _random = new Random();
         _nameGenerator = new NameGenerator(_random);
         _dataAccess = new DataAccessLayer();
-        _currentDate = new DateTime(100, 1, 1); // Year 100 to avoid underflow
+        _currentDate = new DateTime(20, 1, 2); // Year 100 to avoid underflow
     }
     
     public void Initialize()
@@ -81,6 +84,8 @@ public class Simulator
         
         AddPerson(adam);
         AddPerson(eve);
+        _adamId = adam.Id;
+        _eveId = eve.Id;
         
         // Marry Adam and Eve
         MarryCouple(adam, eve);
@@ -293,28 +298,28 @@ public class Simulator
     
     private double CalculateDeathChance(Person person, int age)
     {
-        // Early population protection
-        int totalPeople = _people.Count(p => p.IsAlive);
-        if (totalPeople < 100 && age < 50)
-            return 0.0001; // Very low death rate for early population
+        // Adam/Eve are immortal until 100
+        if ((_adamId.HasValue && person.Id == _adamId.Value) || (_eveId.HasValue && person.Id == _eveId.Value))
+        {
+            if (age < 100)
+                return 0.0;
+        }
+
+        // Base death chance per day - significantly reduced for young people
+        double baseChance = age switch
+        {
+            < 1 => 0.00005,  // ~1.8% yearly infant mortality
+            < 5 => 0.00002,  // ~0.7% yearly child mortality
+            < 16 => 0.00001, // ~0.36% yearly teen mortality
+            < 50 => 0.00003, // ~1.1% yearly adult mortality
+            < 70 => 0.0002 + (age - 50) * 0.00005, // Increasing middle age mortality
+            _ => 0.001 + (age - 70) * 0.0001   // Increasing old age mortality
+        };
         
-        // Base death chance by age
-        double baseChance = age < 1 ? 0.05 : // Infant mortality
-                           age < 5 ? 0.01 : // Childhood
-                           age < 50 ? 0.001 : // Prime years
-                           age < 70 ? 0.01 + (age - 50) * 0.002 : // Middle age
-                           0.05 + (age - 70) * 0.01; // Old age
-        
-        // Health modifier
         double healthMod = 1.0 - (person.Health / 200.0);
-        
-        // Job risk modifier
         double jobRisk = 1.0;
         if (person.JobId.HasValue && _jobsById.ContainsKey(person.JobId.Value))
-        {
             jobRisk = _jobsById[person.JobId.Value].DeathRiskModifier;
-        }
-        
         return baseChance * (1.0 + healthMod) * jobRisk;
     }
     
@@ -418,21 +423,33 @@ public class Simulator
         }
     }
     
+    private bool IsAdamOrEve(Person p)
+    {
+        return (_adamId.HasValue && p.Id == _adamId.Value) || (_eveId.HasValue && p.Id == _eveId.Value);
+    }
+    
+    private bool CanHaveChildren(Person p)
+    {
+        if (p.Gender != "Female" || !p.IsAlive || !p.IsMarried) return false;
+        int age = p.GetAge(_currentDate);
+        if (IsAdamOrEve(p))
+            return age >= 14 && age <= 100 && !p.IsPregnant;
+        return age >= 14 && age <= 50 && !p.IsPregnant;
+    }
+    
     private void ProcessPregnancies()
     {
-        var marriedFemales = _people.Where(p => 
-            p.CanHaveChildren(_currentDate)
-        ).ToList();
+        var marriedFemales = _people.Where(CanHaveChildren).ToList();
         
         foreach (var female in marriedFemales)
         {
             // Significantly increased pregnancy chances to boost population growth
             int totalPeople = _people.Count(p => p.IsAlive);
-            double pregnancyChance = totalPeople < 50 ? 0.20 : // 20% for very early - much higher
-                                    totalPeople < 150 ? 0.15 : // 15% for early - higher to get past 100
-                                    totalPeople < 300 ? 0.10 : // 10% for mid growth
-                                    totalPeople < 500 ? 0.05 : // 5% for growing
-                                    0.02; // 2% for established
+            double pregnancyChance = totalPeople < 50 ? 0.20 :
+                                    totalPeople < 150 ? 0.15 :
+                                    totalPeople < 300 ? 0.10 :
+                                    totalPeople < 500 ? 0.05 :
+                                    0.02;
             
             // Fertility modifier
             pregnancyChance *= (female.Fertility / 100.0);
