@@ -7,12 +7,23 @@ public class ConsoleUI
     private int _lastEventCount = 0;
     private DateTime _lastUpdate = DateTime.Now;
     private DateTime _lastClear = DateTime.Now;
+    private readonly List<string> _screenBuffer = new(); // Buffer for proper screen redraw
     
     public void Initialize()
     {
         Console.Clear();
         Console.Title = "Advanced Population Simulator";
         Console.CursorVisible = false;
+        
+        // Try to disable console scrolling (Windows only)
+        try
+        {
+            Console.BufferHeight = Console.WindowHeight;
+        }
+        catch
+        {
+            // Ignore if not supported on this platform
+        }
     }
     
     public void Update(SimulationStats stats, int simulationSpeed)
@@ -23,184 +34,153 @@ public class ConsoleUI
         
         _lastUpdate = DateTime.Now;
         
-        // Periodically clear and redraw entire screen (every 3 seconds) to fix corruption
-        if ((DateTime.Now - _lastClear).TotalSeconds >= 3)
-        {
-            Console.Clear();
-            _lastClear = DateTime.Now;
-        }
-        
-        Console.SetCursorPosition(0, 0);
+        // Build screen content in buffer
+        _screenBuffer.Clear();
         
         // Header
-        Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine("╔════════════════════════════════════════════════════════════════════════════╗");
-        Console.WriteLine("║              ADVANCED POPULATION SIMULATOR - Living World                  ║");
-        Console.WriteLine("╚════════════════════════════════════════════════════════════════════════════╝");
-        Console.ResetColor();
-        
-        // Current Date
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine($"\n  Current Date: Year {stats.CurrentDate.Year}, Day {stats.CurrentDate.DayOfYear}");
-        Console.WriteLine($"  Generation: {stats.GenerationNumber}");
-        Console.ResetColor();
+        _screenBuffer.Add("╔════════════════════════════════════════════════════════════════════════════╗");
+        _screenBuffer.Add("║              ADVANCED POPULATION SIMULATOR - Living World                  ║");
+        _screenBuffer.Add("╚════════════════════════════════════════════════════════════════════════════╝");
+        _screenBuffer.Add("");
+        _screenBuffer.Add($"  Current Date: Year {stats.CurrentDate.Year}, Day {stats.CurrentDate.DayOfYear}");
+        _screenBuffer.Add($"  Generation: {stats.GenerationNumber}");
         
         // Population Statistics
-        Console.ForegroundColor = ConsoleColor.Green;
-        Console.WriteLine("\n╔══════════════════════════════════════════════════════════════════════════╗");
-        Console.WriteLine("║                         POPULATION STATISTICS                            ║");
-        Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════╝");
-        Console.ResetColor();
-        
-        Console.WriteLine($"  Living Population:    {stats.LivingPopulation,8}");
-        Console.WriteLine($"  Total Births:         {stats.TotalBirths,8}");
-        Console.WriteLine($"  Total Deaths:         {stats.TotalDeaths,8}");
-        Console.WriteLine($"  Total Marriages:      {stats.TotalMarriages,8}");
+        _screenBuffer.Add("");
+        _screenBuffer.Add("╔══════════════════════════════════════════════════════════════════════════╗");
+        _screenBuffer.Add("║                         POPULATION STATISTICS                            ║");
+        _screenBuffer.Add("╚══════════════════════════════════════════════════════════════════════════╝");
+        _screenBuffer.Add($"  Living Population:    {stats.LivingPopulation,8}");
+        _screenBuffer.Add($"  Total Births:         {stats.TotalBirths,8}");
+        _screenBuffer.Add($"  Total Deaths:         {stats.TotalDeaths,8}");
+        _screenBuffer.Add($"  Total Marriages:      {stats.TotalMarriages,8}");
         
         // Top Jobs
         if (stats.TopJobs.Any())
         {
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("\n╔══════════════════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║                            TOP OCCUPATIONS                               ║");
-            Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════╝");
-            Console.ResetColor();
+            _screenBuffer.Add("");
+            _screenBuffer.Add("╔══════════════════════════════════════════════════════════════════════════╗");
+            _screenBuffer.Add("║                            TOP OCCUPATIONS                               ║");
+            _screenBuffer.Add("╚══════════════════════════════════════════════════════════════════════════╝");
             
             foreach (var job in stats.TopJobs)
             {
-                Console.WriteLine($"  {job.JobName,-25} {job.Count,5} people");
+                _screenBuffer.Add($"  {job.JobName,-25} {job.Count,5} people");
             }
         }
         
         // Civilization Progress
-        Console.ForegroundColor = ConsoleColor.Magenta;
-        Console.WriteLine("\n╔══════════════════════════════════════════════════════════════════════════╗");
-        Console.WriteLine("║                       CIVILIZATION PROGRESS                              ║");
-        Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════╝");
-        Console.ResetColor();
-        
-        Console.WriteLine($"  Cities:               {stats.TotalCities,8}");
-        Console.WriteLine($"  Countries:            {stats.TotalCountries,8}");
-        Console.WriteLine($"  Religions:            {stats.TotalReligions,8}");
-        Console.WriteLine($"  Inventions:           {stats.TotalInventions,8}");
-        Console.WriteLine($"  Wars:                 {stats.TotalWars,8}");
+        _screenBuffer.Add("");
+        _screenBuffer.Add("╔══════════════════════════════════════════════════════════════════════════╗");
+        _screenBuffer.Add("║                       CIVILIZATION PROGRESS                              ║");
+        _screenBuffer.Add("╚══════════════════════════════════════════════════════════════════════════╝");
+        _screenBuffer.Add($"  Cities:               {stats.TotalCities,8}");
+        _screenBuffer.Add($"  Countries:            {stats.TotalCountries,8}");
+        _screenBuffer.Add($"  Religions:            {stats.TotalReligions,8}");
+        _screenBuffer.Add($"  Inventions:           {stats.TotalInventions,8}");
+        _screenBuffer.Add($"  Wars:                 {stats.TotalWars,8}");
         
         // Family Trees
         if (stats.FamilyTrees.Any())
         {
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("\n╔══════════════════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║                          ACTIVE FAMILY TREES                             ║");
-            Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════╝");
-            Console.ResetColor();
+            _screenBuffer.Add("");
+            _screenBuffer.Add("╔══════════════════════════════════════════════════════════════════════════╗");
+            _screenBuffer.Add("║                          ACTIVE FAMILY TREES                             ║");
+            _screenBuffer.Add("╚══════════════════════════════════════════════════════════════════════════╝");
             
-            foreach (var tree in stats.FamilyTrees.Take(2)) // Show max 2 trees to fit screen
+            foreach (var tree in stats.FamilyTrees.Take(1)) // Show max 1 tree
             {
-                DisplayFamilyTree(tree, 0);
-                Console.WriteLine(); // Blank line between trees
+                BuildFamilyTreeBuffer(tree, 0);
             }
         }
         
-        // Recent Events
-        Console.ForegroundColor = ConsoleColor.White;
-        Console.WriteLine("\n╔══════════════════════════════════════════════════════════════════════════╗");
-        Console.WriteLine("║                            RECENT EVENTS                                 ║");
-        Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════╝");
-        Console.ResetColor();
+        // Recent Events - show last 10
+        _screenBuffer.Add("");
+        _screenBuffer.Add("╔══════════════════════════════════════════════════════════════════════════╗");
+        _screenBuffer.Add("║                            RECENT EVENTS                                 ║");
+        _screenBuffer.Add("╚══════════════════════════════════════════════════════════════════════════╝");
         
         if (stats.RecentEvents.Any())
         {
-            foreach (var evt in stats.RecentEvents.Take(5)) // Show fewer events to fit screen
+            foreach (var evt in stats.RecentEvents.TakeLast(10)) // Show last 10 events
             {
-                var color = evt.EventType switch
-                {
-                    "Birth" => ConsoleColor.Green,
-                    "Death" => ConsoleColor.Red,
-                    "Marriage" => ConsoleColor.Yellow,
-                    "City" => ConsoleColor.Cyan,
-                    "Country" => ConsoleColor.Magenta,
-                    "Religion" => ConsoleColor.Blue,
-                    "Invention" => ConsoleColor.Yellow,
-                    "War" => ConsoleColor.DarkRed,
-                    _ => ConsoleColor.Gray
-                };
-                
-                Console.ForegroundColor = color;
                 string eventLine = $"  [{evt.EventType,-12}] {evt.Description}";
                 
-                // Wrap long event text instead of truncating
                 if (eventLine.Length > 78)
                 {
-                    Console.WriteLine(eventLine.Substring(0, 78));
+                    eventLine = eventLine.Substring(0, 78);
                 }
                 else
                 {
-                    Console.WriteLine(eventLine.PadRight(78));
+                    eventLine = eventLine.PadRight(78);
                 }
+                
+                _screenBuffer.Add(eventLine);
             }
         }
         else
         {
-            Console.WriteLine("  No events yet...");
+            _screenBuffer.Add("  No events yet...".PadRight(78));
         }
         
         // Clear remaining lines
-        for (int i = stats.RecentEvents.Count; i < 5; i++)
+        for (int i = stats.RecentEvents.Count; i < 10; i++)
         {
-            Console.WriteLine(new string(' ', 78));
+            _screenBuffer.Add(new string(' ', 78));
         }
         
-        Console.ResetColor();
-        
         // Controls
-        Console.ForegroundColor = ConsoleColor.DarkGray;
-        Console.WriteLine("\n╔══════════════════════════════════════════════════════════════════════════╗");
-        Console.WriteLine("║                               CONTROLS                                   ║");
-        Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════╝");
-        Console.WriteLine($"  Speed: {simulationSpeed}x | Press [+] to speed up, [-] to slow down, [Q] to quit");
-        Console.ResetColor();
+        _screenBuffer.Add("");
+        _screenBuffer.Add("╔══════════════════════════════════════════════════════════════════════════╗");
+        _screenBuffer.Add("║                               CONTROLS                                   ║");
+        _screenBuffer.Add("╚══════════════════════════════════════════════════════════════════════════╝");
+        _screenBuffer.Add($"  Speed: {simulationSpeed}x | Press [+] to speed up, [-] to slow down, [Q] to quit");
         
         // Add blank lines to ensure screen is fully cleared
         for (int i = 0; i < 2; i++)
         {
-            Console.WriteLine(new string(' ', 80));
+            _screenBuffer.Add(new string(' ', 80));
+        }
+        
+        // Redraw screen from buffer
+        Console.SetCursorPosition(0, 0);
+        foreach (var line in _screenBuffer)
+        {
+            Console.WriteLine(line);
         }
         
         _lastEventCount = stats.RecentEvents.Count;
     }
     
-    private void DisplayFamilyTree(FamilyTreeNode node, int depth, string prefix = "")
+    private void BuildFamilyTreeBuffer(FamilyTreeNode node, int depth, string prefix = "")
     {
         if (depth > 3) return; // Limit depth to prevent overwhelming display
         
         string indent = new string(' ', depth * 2);
         string marker = depth == 0 ? "■ " : "└─";
         
-        var color = node.IsAlive ? ConsoleColor.Green : ConsoleColor.DarkGray;
-        Console.ForegroundColor = color;
-        
         string status = node.IsAlive ? $"Age {node.Age}" : "†";
         string spouse = !string.IsNullOrEmpty(node.SpouseName) ? $" ♥ {node.SpouseName}" : "";
-        string line = $"  {indent}{marker}{node.FirstName} {node.LastName} ({status}){spouse}";
+        
+        // Add gender marker: ♂ for male, ♀ for female
+        string genderMarker = node.Gender == "Male" ? "♂" : "♀";
+        
+        string line = $"  {indent}{marker}{genderMarker} {node.FirstName} {node.LastName} ({status}){spouse}";
         
         if (line.Length > 78)
             line = line.Substring(0, 75) + "...";
         
-        Console.WriteLine(line.PadRight(78));
+        _screenBuffer.Add(line.PadRight(78));
         
-        Console.ResetColor();
-        
-        // Show only first few living children to avoid clutter
-        foreach (var child in node.Children.Take(5))
+        // Show only first 10 living children to avoid clutter
+        foreach (var child in node.Children.Take(10))
         {
-            DisplayFamilyTree(child, depth + 1);
+            BuildFamilyTreeBuffer(child, depth + 1);
         }
         
-        if (node.Children.Count > 5)
+        if (node.Children.Count > 10)
         {
-            Console.ForegroundColor = ConsoleColor.DarkGray;
-            Console.WriteLine($"  {new string(' ', (depth + 1) * 2)}... and {node.Children.Count - 5} more");
-            Console.ResetColor();
+            _screenBuffer.Add($"  {new string(' ', (depth + 1) * 2)}... and {node.Children.Count - 10} more".PadRight(78));
         }
     }
     

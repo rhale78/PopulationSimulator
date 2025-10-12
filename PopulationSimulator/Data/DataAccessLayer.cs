@@ -162,6 +162,43 @@ public class DataAccessLayer
             );
         ";
         command.ExecuteNonQuery();
+        
+        // Migrate existing Inventions table to add HealthBonus and LifespanBonus if they don't exist
+        try
+        {
+            var checkCommand = connection.CreateCommand();
+            checkCommand.CommandText = "PRAGMA table_info(Inventions)";
+            var reader = checkCommand.ExecuteReader();
+            bool hasHealthBonus = false;
+            bool hasLifespanBonus = false;
+            
+            while (reader.Read())
+            {
+                string columnName = reader.GetString(1);
+                if (columnName == "HealthBonus") hasHealthBonus = true;
+                if (columnName == "LifespanBonus") hasLifespanBonus = true;
+            }
+            reader.Close();
+            
+            // Add missing columns if needed
+            if (!hasHealthBonus)
+            {
+                var alterCommand = connection.CreateCommand();
+                alterCommand.CommandText = "ALTER TABLE Inventions ADD COLUMN HealthBonus INTEGER NOT NULL DEFAULT 0";
+                alterCommand.ExecuteNonQuery();
+            }
+            
+            if (!hasLifespanBonus)
+            {
+                var alterCommand = connection.CreateCommand();
+                alterCommand.CommandText = "ALTER TABLE Inventions ADD COLUMN LifespanBonus INTEGER NOT NULL DEFAULT 0";
+                alterCommand.ExecuteNonQuery();
+            }
+        }
+        catch
+        {
+            // Ignore errors - table might not exist yet or columns might already be there
+        }
     }
     
     public void SavePeople(List<Person> people)

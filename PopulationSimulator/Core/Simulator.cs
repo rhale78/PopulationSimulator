@@ -12,6 +12,7 @@ public class Simulator
     // In-memory collections
     private readonly List<Person> _people = new();
     private readonly Dictionary<long, Person> _peopleById = new();
+    private readonly Dictionary<long, Person> _deadPeopleById = new(); // Track dead people for name lookup
     private readonly List<City> _cities = new();
     private readonly Dictionary<long, City> _citiesById = new();
     private readonly List<Country> _countries = new();
@@ -337,6 +338,12 @@ public class Simulator
                 person.IsAlive = false;
                 person.DeathDate = _currentDate;
                 
+                // Add to dead people dictionary for later lookup
+                if (!_deadPeopleById.ContainsKey(person.Id))
+                {
+                    _deadPeopleById[person.Id] = person;
+                }
+                
                 LogEvent("Death", $"{person.FirstName} {person.LastName} died at age {age}", person.Id);
                 
                 // Handle succession if ruler
@@ -653,17 +660,33 @@ public class Simulator
                     _nameGenerator.GenerateMaleFirstName() : 
                     _nameGenerator.GenerateFemaleFirstName();
                 
-                // Get father - should always exist for children born during simulation
+                // Get father - check living first, then dead people dictionary
                 Person? father = null;
-                if (mother.PregnancyFatherId.HasValue && _peopleById.ContainsKey(mother.PregnancyFatherId.Value))
+                if (mother.PregnancyFatherId.HasValue)
                 {
-                    father = _peopleById[mother.PregnancyFatherId.Value];
+                    // Try living people first
+                    if (_peopleById.ContainsKey(mother.PregnancyFatherId.Value))
+                    {
+                        father = _peopleById[mother.PregnancyFatherId.Value];
+                    }
+                    // If not found in living, check dead people
+                    else if (_deadPeopleById.ContainsKey(mother.PregnancyFatherId.Value))
+                    {
+                        father = _deadPeopleById[mother.PregnancyFatherId.Value];
+                    }
                 }
                 
-                // If no father found, use spouse as fallback
-                if (father == null && mother.SpouseId.HasValue && _peopleById.ContainsKey(mother.SpouseId.Value))
+                // If no father found, use spouse as fallback (check both living and dead)
+                if (father == null && mother.SpouseId.HasValue)
                 {
-                    father = _peopleById[mother.SpouseId.Value];
+                    if (_peopleById.ContainsKey(mother.SpouseId.Value))
+                    {
+                        father = _peopleById[mother.SpouseId.Value];
+                    }
+                    else if (_deadPeopleById.ContainsKey(mother.SpouseId.Value))
+                    {
+                        father = _deadPeopleById[mother.SpouseId.Value];
+                    }
                 }
                 
                 // Calculate current generation for this child
@@ -1010,27 +1033,28 @@ public class Simulator
     {
         var trees = new List<FamilyTreeNode>();
         
-        // Find roots - people with no parents who have living descendants
+        // Find male roots - people with no parents who have living descendants
         var roots = _people.Where(p => 
             !p.FatherId.HasValue && 
             !p.MotherId.HasValue &&
+            p.Gender == "Male" &&
             HasLivingDescendants(p.Id)
         ).ToList();
         
-        // If Adam/Eve are dead, find their children with most descendants
+        // If Adam is dead, find male children with most descendants
         if (roots.Count == 0 || roots.All(r => !r.IsAlive))
         {
             var potentialRoots = _people
-                .Where(p => p.IsAlive && HasLivingDescendants(p.Id))
+                .Where(p => p.IsAlive && p.Gender == "Male" && HasLivingDescendants(p.Id))
                 .OrderByDescending(p => CountLivingDescendants(p.Id))
-                .Take(3)
+                .Take(10) // Top 10 most active male lines
                 .ToList();
             
             roots = potentialRoots;
         }
         
-        // Build tree for each root (limit to top 3 most active families)
-        foreach (var root in roots.Take(3))
+        // Build tree for each root (limit to top 1 tree to prevent overflow)
+        foreach (var root in roots.Take(1))
         {
             trees.Add(BuildFamilyTreeNode(root));
         }
