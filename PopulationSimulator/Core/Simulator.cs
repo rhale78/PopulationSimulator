@@ -41,7 +41,7 @@ public class Simulator
         _random = new Random();
         _nameGenerator = new NameGenerator(_random);
         _dataAccess = new DataAccessLayer();
-        _currentDate = new DateTime(20, 1, 2); // Year 100 to avoid underflow
+        _currentDate = new DateTime(1, 1, 1); // Start at year 1
     }
     
     public void Initialize()
@@ -55,9 +55,12 @@ public class Simulator
         // Seed jobs
         SeedJobs();
         
+        // Set current date to year 20 so Adam and Eve start at age 20
+        _currentDate = new DateTime(21, 1, 1);
+        
         // Create Adam and Eve at age 20 with perfect traits (100 for all stats)
         var adam = CreatePerson("Adam", "", "Male", null, null);
-        adam.BirthDate = _currentDate.AddYears(-20); // Set Adam to be 20 years old
+        adam.BirthDate = new DateTime(1, 1, 1); // Born in year 1, currently age 20
         adam.Intelligence = 100;
         adam.Strength = 100;
         adam.Health = 100;
@@ -71,7 +74,7 @@ public class Simulator
         adam.Height = 180;
         
         var eve = CreatePerson("Eve", "", "Female", null, null);
-        eve.BirthDate = _currentDate.AddYears(-20); // Set Eve to be 20 years old
+        eve.BirthDate = new DateTime(1, 1, 1); // Born in year 1, currently age 20
         eve.Intelligence = 100;
         eve.Strength = 100;
         eve.Health = 100;
@@ -321,6 +324,7 @@ public class Simulator
     
     private void ProcessDeaths()
     {
+        // Cache living people to avoid multiple enumerations
         var livingPeople = _people.Where(p => p.IsAlive).ToList();
         
         foreach (var person in livingPeople)
@@ -402,82 +406,90 @@ public class Simulator
     
     private void AssignJobs()
     {
-        var eligiblePeople = _people.Where(p => p.IsEligibleForJob(_currentDate)).ToList();
-        
-        // Track which inventions have been discovered
+        // Track which inventions have been discovered (use HashSet for O(1) lookup)
         var discoveredInventionNames = _inventions.Select(i => i.Name).ToHashSet();
         
-        foreach (var person in eligiblePeople)
+        // Job-invention mapping for quick lookup
+        var jobInventionMap = new Dictionary<string, string>
         {
-            // Find suitable jobs
-            var suitableJobs = _jobs.Where(j => 
+            { "Potter", "Pottery" },
+            { "Weaver", "Weaving" },
+            { "Tanner", "Tanning" },
+            { "Glassmaker", "Glassmaking" },
+            { "Copper Smith", "Copper Working" },
+            { "Bronze Smith", "Bronze" },
+            { "Iron Smith", "Iron Working" },
+            { "Blacksmith", "Steel" },
+            { "Goldsmith", "Gold Working" },
+            { "Scribe", "Writing" },
+            { "Healer", "Herbal Medicine" },
+            { "Physician", "Surgery" },
+            { "Scholar", "Writing" },
+            { "Teacher", "Writing" },
+            { "Architect", "Architecture" },
+            { "Engineer", "Mathematics" },
+            { "Mason", "Brick Making" },
+            { "Artist", "Painting" },
+            { "Sculptor", "Sculpture" },
+            { "Musician", "Music" },
+            { "Poet", "Poetry" },
+            { "Baker", "Bread Baking" },
+            { "Brewer", "Beer Brewing" },
+            { "Carter", "Cart" },
+            { "Sailor", "Ship" },
+            { "Charioteer", "Chariot" },
+            { "Archer", "Bow and Arrow" }
+        };
+        
+        bool hasWars = _wars.Count > 0;
+        
+        // Single pass through people
+        foreach (var person in _people)
+        {
+            if (!person.IsEligibleForJob(_currentDate)) continue;
+            
+            int personAge = person.GetAge(_currentDate);
+            int personIntelligence = person.Intelligence;
+            int personStrength = person.Strength;
+            
+            // Find best suitable job
+            Job? bestJob = null;
+            int bestScore = -1;
+            
+            foreach (var job in _jobs)
             {
                 // Check basic requirements
-                if (person.Intelligence < j.MinIntelligence) return false;
-                if (person.Strength < j.MinStrength) return false;
-                if (person.GetAge(_currentDate) < j.MinAge) return false;
+                if (personIntelligence < job.MinIntelligence) continue;
+                if (personStrength < job.MinStrength) continue;
+                if (personAge < job.MinAge) continue;
                 
                 // Check if job requires an invention
-                if (j.RequiresInvention)
+                if (job.RequiresInvention)
                 {
-                    // Find the required invention by checking job-invention mapping
-                    bool hasRequiredInvention = false;
-                    
-                    // Map job names to required inventions
-                    var jobInventionMap = new Dictionary<string, string>
+                    if (jobInventionMap.TryGetValue(job.Name, out var requiredInvention))
                     {
-                        { "Potter", "Pottery" },
-                        { "Weaver", "Weaving" },
-                        { "Tanner", "Tanning" },
-                        { "Glassmaker", "Glassmaking" },
-                        { "Copper Smith", "Copper Working" },
-                        { "Bronze Smith", "Bronze" },
-                        { "Iron Smith", "Iron Working" },
-                        { "Blacksmith", "Steel" },
-                        { "Goldsmith", "Gold Working" },
-                        { "Scribe", "Writing" },
-                        { "Healer", "Herbal Medicine" },
-                        { "Physician", "Surgery" },
-                        { "Scholar", "Writing" },
-                        { "Teacher", "Writing" },
-                        { "Architect", "Architecture" },
-                        { "Engineer", "Mathematics" },
-                        { "Mason", "Brick Making" },
-                        { "Artist", "Painting" },
-                        { "Sculptor", "Sculpture" },
-                        { "Musician", "Music" },
-                        { "Poet", "Poetry" },
-                        { "Baker", "Bread Baking" },
-                        { "Brewer", "Beer Brewing" },
-                        { "Carter", "Cart" },
-                        { "Sailor", "Ship" },
-                        { "Charioteer", "Chariot" },
-                        { "Archer", "Bow and Arrow" }
-                    };
-                    
-                    if (jobInventionMap.ContainsKey(j.Name))
-                    {
-                        hasRequiredInvention = discoveredInventionNames.Contains(jobInventionMap[j.Name]);
+                        if (!discoveredInventionNames.Contains(requiredInvention))
+                            continue;
                     }
-                    
-                    if (!hasRequiredInvention) return false;
                 }
                 
                 // Restrict military jobs until wars exist
-                if ((j.Name == "Warrior" || j.Name == "Archer") && _wars.Count == 0)
-                    return false;
+                if ((job.Name == "Warrior" || job.Name == "Archer") && !hasWars)
+                    continue;
                 
-                return true;
-            }).ToList();
+                // Calculate job fit score
+                int score = (personIntelligence - job.MinIntelligence) + 
+                           (personStrength - job.MinStrength);
+                
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestJob = job;
+                }
+            }
             
-            if (suitableJobs.Any())
+            if (bestJob != null)
             {
-                // Prefer jobs that match traits better
-                var bestJob = suitableJobs.OrderByDescending(j => 
-                    (person.Intelligence >= j.MinIntelligence ? person.Intelligence - j.MinIntelligence : 0) +
-                    (person.Strength >= j.MinStrength ? person.Strength - j.MinStrength : 0)
-                ).First();
-                
                 person.JobId = bestJob.Id;
                 person.JobStartDate = _currentDate;
                 person.SocialStatus += bestJob.SocialStatusBonus;
@@ -490,43 +502,72 @@ public class Simulator
     
     private void ProcessMarriages()
     {
-        var eligibleMales = _people.Where(p => 
-            p.IsEligibleForMarriage(_currentDate) && p.Gender == "Male"
-        ).ToList();
+        // Cache eligible people lists to avoid multiple enumerations
+        var eligibleMales = new List<Person>();
+        var eligibleFemales = new List<Person>();
         
-        var eligibleFemales = _people.Where(p => 
-            p.IsEligibleForMarriage(_currentDate) && p.Gender == "Female"
-        ).ToList();
+        // Single pass through people list
+        foreach (var person in _people)
+        {
+            if (!person.IsEligibleForMarriage(_currentDate)) continue;
+            
+            if (person.Gender == "Male")
+                eligibleMales.Add(person);
+            else
+                eligibleFemales.Add(person);
+        }
+        
+        if (eligibleMales.Count == 0 || eligibleFemales.Count == 0)
+            return;
         
         // Early population relaxed rules
-        bool earlyPopulation = _people.Count(p => p.IsAlive) < 100;
+        int livingCount = _people.Count(p => p.IsAlive);
+        bool earlyPopulation = livingCount < 100;
         
         foreach (var male in eligibleMales)
         {
             if (!male.IsEligibleForMarriage(_currentDate)) continue;
             
-            var potentialSpouses = eligibleFemales.Where(f => 
-                f.IsEligibleForMarriage(_currentDate) &&
-                // Avoid parent-child marriages
-                f.Id != male.FatherId && f.Id != male.MotherId &&
-                male.Id != f.FatherId && male.Id != f.MotherId &&
-                // Same country and religion if available
-                (earlyPopulation || f.CountryId == male.CountryId || f.CountryId == null || male.CountryId == null) &&
-                (earlyPopulation || f.ReligionId == male.ReligionId || f.ReligionId == null || male.ReligionId == null) &&
-                // Avoid sibling marriages after early population
-                (earlyPopulation || f.FatherId != male.FatherId || f.FatherId == null)
-            ).ToList();
+            // Random chance to marry - only process 10% to improve performance
+            if (_random.NextDouble() >= 0.1) continue;
             
-            if (potentialSpouses.Any())
+            // Find potential spouses
+            Person? bestSpouse = null;
+            foreach (var female in eligibleFemales)
             {
-                // Random chance to marry
-                if (_random.NextDouble() < 0.1) // 10% chance per day
+                if (!female.IsEligibleForMarriage(_currentDate))
+                    continue;
+                
+                // Avoid parent-child marriages
+                if (female.Id == male.FatherId || female.Id == male.MotherId ||
+                    male.Id == female.FatherId || male.Id == female.MotherId)
+                    continue;
+                
+                // Same country and religion if available (unless early population)
+                if (!earlyPopulation)
                 {
-                    var spouse = potentialSpouses[_random.Next(potentialSpouses.Count)];
-                    MarryCouple(male, spouse);
+                    if (male.CountryId.HasValue && female.CountryId.HasValue && 
+                        male.CountryId != female.CountryId)
+                        continue;
                     
-                    LogEvent("Marriage", $"{male.FirstName} {male.LastName} married {spouse.FirstName} {spouse.LastName}", male.Id);
+                    if (male.ReligionId.HasValue && female.ReligionId.HasValue && 
+                        male.ReligionId != female.ReligionId)
+                        continue;
                 }
+                
+                // Avoid sibling marriages after early population
+                if (!earlyPopulation && male.FatherId.HasValue && 
+                    male.FatherId == female.FatherId)
+                    continue;
+                
+                bestSpouse = female;
+                break; // Take first compatible match for performance
+            }
+            
+            if (bestSpouse != null)
+            {
+                MarryCouple(male, bestSpouse);
+                LogEvent("Marriage", $"{male.FirstName} {male.LastName} married {bestSpouse.FirstName} {bestSpouse.LastName}", male.Id);
             }
         }
     }
@@ -547,22 +588,24 @@ public class Simulator
     
     private void ProcessPregnancies()
     {
-        var marriedFemales = _people.Where(CanHaveChildren).ToList();
+        // Cache living count for pregnancy chance calculation
+        int totalPeople = _people.Count(p => p.IsAlive);
         
-        foreach (var female in marriedFemales)
+        // Determine pregnancy chance based on population size
+        double basePregnancyChance = totalPeople < 50 ? 0.20 :
+                                totalPeople < 150 ? 0.15 :
+                                totalPeople < 300 ? 0.10 :
+                                totalPeople < 500 ? 0.05 :
+                                0.02;
+        
+        // Single pass through people to find eligible females
+        foreach (var female in _people)
         {
-            // Significantly increased pregnancy chances to boost population growth
-            int totalPeople = _people.Count(p => p.IsAlive);
-            double pregnancyChance = totalPeople < 50 ? 0.20 :
-                                    totalPeople < 150 ? 0.15 :
-                                    totalPeople < 300 ? 0.10 :
-                                    totalPeople < 500 ? 0.05 :
-                                    0.02;
+            if (!CanHaveChildren(female)) continue;
             
-            // Fertility modifier
+            // Calculate pregnancy chance with modifiers
+            double pregnancyChance = basePregnancyChance;
             pregnancyChance *= (female.Fertility / 100.0);
-            
-            // Health modifier
             pregnancyChance *= (female.Health / 100.0);
             
             if (_random.NextDouble() < pregnancyChance)
@@ -588,11 +631,18 @@ public class Simulator
     
     private void ProcessBirths()
     {
-        var duePregnancies = _people.Where(p => 
-            p.IsPregnant && 
-            p.PregnancyDueDate.HasValue && 
-            p.PregnancyDueDate.Value <= _currentDate
-        ).ToList();
+        // Cache pregnancies due today (avoid creating list if no pregnancies)
+        var duePregnancies = new List<Person>();
+        foreach (var person in _people)
+        {
+            if (person.IsPregnant && person.PregnancyDueDate.HasValue && 
+                person.PregnancyDueDate.Value <= _currentDate)
+            {
+                duePregnancies.Add(person);
+            }
+        }
+        
+        if (duePregnancies.Count == 0) return;
         
         foreach (var mother in duePregnancies)
         {
