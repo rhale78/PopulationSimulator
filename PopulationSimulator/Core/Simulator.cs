@@ -933,8 +933,128 @@ public class Simulator
             TotalInventions = _inventions.Count,
             TotalWars = _wars.Count,
             GenerationNumber = _generationNumber,
-            RecentEvents = _recentEvents.TakeLast(10).ToList()
+            RecentEvents = _recentEvents.TakeLast(10).ToList(),
+            TopJobs = GetTopJobs(),
+            FamilyTrees = GetActiveFamilyTrees()
         };
+    }
+    
+    private List<JobStatistic> GetTopJobs()
+    {
+        var jobStats = _people
+            .Where(p => p.IsAlive && p.JobId.HasValue)
+            .GroupBy(p => p.JobId!.Value)
+            .Select(g => new JobStatistic
+            {
+                JobName = _jobsById.ContainsKey(g.Key) ? _jobsById[g.Key].Name : "Unknown",
+                Count = g.Count()
+            })
+            .OrderByDescending(j => j.Count)
+            .Take(5)
+            .ToList();
+        
+        return jobStats;
+    }
+    
+    private List<FamilyTreeNode> GetActiveFamilyTrees()
+    {
+        var trees = new List<FamilyTreeNode>();
+        
+        // Find roots - people with no parents who have living descendants
+        var roots = _people.Where(p => 
+            !p.FatherId.HasValue && 
+            !p.MotherId.HasValue &&
+            HasLivingDescendants(p.Id)
+        ).ToList();
+        
+        // If Adam/Eve are dead, find their children with most descendants
+        if (roots.Count == 0 || roots.All(r => !r.IsAlive))
+        {
+            var potentialRoots = _people
+                .Where(p => p.IsAlive && HasLivingDescendants(p.Id))
+                .OrderByDescending(p => CountLivingDescendants(p.Id))
+                .Take(3)
+                .ToList();
+            
+            roots = potentialRoots;
+        }
+        
+        // Build tree for each root (limit to top 3 most active families)
+        foreach (var root in roots.Take(3))
+        {
+            trees.Add(BuildFamilyTreeNode(root));
+        }
+        
+        return trees;
+    }
+    
+    private bool HasLivingDescendants(long personId)
+    {
+        var children = _people.Where(p => p.FatherId == personId || p.MotherId == personId);
+        
+        if (children.Any(c => c.IsAlive))
+            return true;
+        
+        foreach (var child in children)
+        {
+            if (HasLivingDescendants(child.Id))
+                return true;
+        }
+        
+        return false;
+    }
+    
+    private int CountLivingDescendants(long personId)
+    {
+        var children = _people.Where(p => p.FatherId == personId || p.MotherId == personId);
+        int count = children.Count(c => c.IsAlive);
+        
+        foreach (var child in children)
+        {
+            count += CountLivingDescendants(child.Id);
+        }
+        
+        return count;
+    }
+    
+    private FamilyTreeNode BuildFamilyTreeNode(Person person)
+    {
+        var node = new FamilyTreeNode
+        {
+            Id = person.Id,
+            FirstName = person.FirstName,
+            LastName = person.LastName,
+            Gender = person.Gender,
+            Age = person.GetAge(_currentDate),
+            IsAlive = person.IsAlive,
+            SpouseName = GetSpouseName(person),
+            Children = new List<FamilyTreeNode>()
+        };
+        
+        // Only add living children or children with living descendants
+        var children = _people
+            .Where(p => p.FatherId == person.Id || p.MotherId == person.Id)
+            .Where(c => c.IsAlive || HasLivingDescendants(c.Id))
+            .OrderByDescending(c => c.IsAlive)
+            .ThenBy(c => c.BirthDate)
+            .Take(10) // Limit children shown to prevent huge trees
+            .ToList();
+        
+        foreach (var child in children)
+        {
+            node.Children.Add(BuildFamilyTreeNode(child));
+        }
+        
+        return node;
+    }
+    
+    private string GetSpouseName(Person person)
+    {
+        if (!person.SpouseId.HasValue || !_peopleById.ContainsKey(person.SpouseId.Value))
+            return string.Empty;
+        
+        var spouse = _peopleById[person.SpouseId.Value];
+        return $"{spouse.FirstName} {spouse.LastName}";
     }
 }
 
@@ -953,4 +1073,24 @@ public class SimulationStats
     public int TotalWars { get; set; }
     public int GenerationNumber { get; set; }
     public List<Event> RecentEvents { get; set; } = new();
+    public List<JobStatistic> TopJobs { get; set; } = new();
+    public List<FamilyTreeNode> FamilyTrees { get; set; } = new();
+}
+
+public class JobStatistic
+{
+    public string JobName { get; set; } = string.Empty;
+    public int Count { get; set; }
+}
+
+public class FamilyTreeNode
+{
+    public long Id { get; set; }
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
+    public string Gender { get; set; } = string.Empty;
+    public int Age { get; set; }
+    public bool IsAlive { get; set; }
+    public string SpouseName { get; set; } = string.Empty;
+    public List<FamilyTreeNode> Children { get; set; } = new();
 }

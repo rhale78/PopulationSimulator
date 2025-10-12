@@ -57,6 +57,21 @@ public class ConsoleUI
         Console.WriteLine($"  Total Deaths:         {stats.TotalDeaths,8}");
         Console.WriteLine($"  Total Marriages:      {stats.TotalMarriages,8}");
         
+        // Top Jobs
+        if (stats.TopJobs.Any())
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("\n╔══════════════════════════════════════════════════════════════════════════╗");
+            Console.WriteLine("║                            TOP OCCUPATIONS                               ║");
+            Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════╝");
+            Console.ResetColor();
+            
+            foreach (var job in stats.TopJobs)
+            {
+                Console.WriteLine($"  {job.JobName,-25} {job.Count,5} people");
+            }
+        }
+        
         // Civilization Progress
         Console.ForegroundColor = ConsoleColor.Magenta;
         Console.WriteLine("\n╔══════════════════════════════════════════════════════════════════════════╗");
@@ -70,6 +85,22 @@ public class ConsoleUI
         Console.WriteLine($"  Inventions:           {stats.TotalInventions,8}");
         Console.WriteLine($"  Wars:                 {stats.TotalWars,8}");
         
+        // Family Trees
+        if (stats.FamilyTrees.Any())
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("\n╔══════════════════════════════════════════════════════════════════════════╗");
+            Console.WriteLine("║                          ACTIVE FAMILY TREES                             ║");
+            Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════╝");
+            Console.ResetColor();
+            
+            foreach (var tree in stats.FamilyTrees.Take(2)) // Show max 2 trees to fit screen
+            {
+                DisplayFamilyTree(tree, 0);
+                Console.WriteLine(); // Blank line between trees
+            }
+        }
+        
         // Recent Events
         Console.ForegroundColor = ConsoleColor.White;
         Console.WriteLine("\n╔══════════════════════════════════════════════════════════════════════════╗");
@@ -79,7 +110,7 @@ public class ConsoleUI
         
         if (stats.RecentEvents.Any())
         {
-            foreach (var evt in stats.RecentEvents)
+            foreach (var evt in stats.RecentEvents.Take(5)) // Show fewer events to fit screen
             {
                 var color = evt.EventType switch
                 {
@@ -101,11 +132,6 @@ public class ConsoleUI
                 if (eventLine.Length > 78)
                 {
                     Console.WriteLine(eventLine.Substring(0, 78));
-                    // Print continuation on next line
-                    string continuation = "                     " + eventLine.Substring(78);
-                    if (continuation.Length > 78)
-                        continuation = continuation.Substring(0, 75) + "...";
-                    Console.WriteLine(continuation.PadRight(78));
                 }
                 else
                 {
@@ -119,7 +145,7 @@ public class ConsoleUI
         }
         
         // Clear remaining lines
-        for (int i = stats.RecentEvents.Count; i < 10; i++)
+        for (int i = stats.RecentEvents.Count; i < 5; i++)
         {
             Console.WriteLine(new string(' ', 78));
         }
@@ -135,12 +161,47 @@ public class ConsoleUI
         Console.ResetColor();
         
         // Add blank lines to ensure screen is fully cleared
-        for (int i = 0; i < 5; i++)
+        for (int i = 0; i < 2; i++)
         {
             Console.WriteLine(new string(' ', 80));
         }
         
         _lastEventCount = stats.RecentEvents.Count;
+    }
+    
+    private void DisplayFamilyTree(FamilyTreeNode node, int depth, string prefix = "")
+    {
+        if (depth > 3) return; // Limit depth to prevent overwhelming display
+        
+        string indent = new string(' ', depth * 2);
+        string marker = depth == 0 ? "■ " : "└─";
+        
+        var color = node.IsAlive ? ConsoleColor.Green : ConsoleColor.DarkGray;
+        Console.ForegroundColor = color;
+        
+        string status = node.IsAlive ? $"Age {node.Age}" : "†";
+        string spouse = !string.IsNullOrEmpty(node.SpouseName) ? $" ♥ {node.SpouseName}" : "";
+        string line = $"  {indent}{marker}{node.FirstName} {node.LastName} ({status}){spouse}";
+        
+        if (line.Length > 78)
+            line = line.Substring(0, 75) + "...";
+        
+        Console.WriteLine(line.PadRight(78));
+        
+        Console.ResetColor();
+        
+        // Show only first few living children to avoid clutter
+        foreach (var child in node.Children.Take(5))
+        {
+            DisplayFamilyTree(child, depth + 1);
+        }
+        
+        if (node.Children.Count > 5)
+        {
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.WriteLine($"  {new string(' ', (depth + 1) * 2)}... and {node.Children.Count - 5} more");
+            Console.ResetColor();
+        }
     }
     
     public void ShowWelcome()

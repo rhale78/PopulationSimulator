@@ -112,7 +112,9 @@ public class DataAccessLayer
                 DiscoveredDate TEXT NOT NULL,
                 InventorId INTEGER,
                 RequiredIntelligence INTEGER NOT NULL,
-                Category TEXT NOT NULL
+                Category TEXT NOT NULL,
+                HealthBonus INTEGER NOT NULL DEFAULT 0,
+                LifespanBonus INTEGER NOT NULL DEFAULT 0
             );
             
             CREATE TABLE IF NOT EXISTS Wars (
@@ -475,8 +477,8 @@ public class DataAccessLayer
             {
                 var command = connection.CreateCommand();
                 command.CommandText = @"
-                    INSERT INTO Inventions (Name, Description, DiscoveredDate, InventorId, RequiredIntelligence, Category)
-                    VALUES (@Name, @Description, @DiscoveredDate, @InventorId, @RequiredIntelligence, @Category)
+                    INSERT INTO Inventions (Name, Description, DiscoveredDate, InventorId, RequiredIntelligence, Category, HealthBonus, LifespanBonus)
+                    VALUES (@Name, @Description, @DiscoveredDate, @InventorId, @RequiredIntelligence, @Category, @HealthBonus, @LifespanBonus)
                 ";
                 command.Parameters.AddWithValue("@Name", invention.Name);
                 command.Parameters.AddWithValue("@Description", invention.Description);
@@ -484,6 +486,8 @@ public class DataAccessLayer
                 command.Parameters.AddWithValue("@InventorId", invention.InventorId ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@RequiredIntelligence", invention.RequiredIntelligence);
                 command.Parameters.AddWithValue("@Category", invention.Category);
+                command.Parameters.AddWithValue("@HealthBonus", invention.HealthBonus);
+                command.Parameters.AddWithValue("@LifespanBonus", invention.LifespanBonus);
                 command.ExecuteNonQuery();
                 
                 var idCommand = connection.CreateCommand();
