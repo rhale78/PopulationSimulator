@@ -1070,6 +1070,7 @@ public class Simulator
     private List<FamilyTreeNode> GetActiveFamilyTrees()
     {
         var trees = new List<FamilyTreeNode>();
+        var livingPeople = GetLivingPeople();
         
         // Find male roots - people with no parents who have living descendants
         var roots = _people.Where(p => 
@@ -1082,8 +1083,8 @@ public class Simulator
         // If Adam is dead, find male children with most descendants
         if (roots.Count == 0 || roots.All(r => !r.IsAlive))
         {
-            var potentialRoots = _people
-                .Where(p => p.IsAlive && p.Gender == "Male" && HasLivingDescendants(p.Id))
+            var potentialRoots = livingPeople
+                .Where(p => p.Gender == "Male" && HasLivingDescendants(p.Id))
                 .OrderByDescending(p => CountLivingDescendants(p.Id))
                 .Take(10) // Top 10 most active male lines
                 .ToList();
@@ -1102,11 +1103,15 @@ public class Simulator
     
     private bool HasLivingDescendants(long personId)
     {
-        var children = _people.Where(p => p.FatherId == personId || p.MotherId == personId);
+        // Use cached living people for better performance
+        var livingPeople = GetLivingPeople();
         
-        if (children.Any(c => c.IsAlive))
+        // Check if any living person has this person as parent
+        if (livingPeople.Any(p => p.FatherId == personId || p.MotherId == personId))
             return true;
         
+        // Check descendants recursively
+        var children = _people.Where(p => p.FatherId == personId || p.MotherId == personId);
         foreach (var child in children)
         {
             if (HasLivingDescendants(child.Id))
@@ -1118,9 +1123,15 @@ public class Simulator
     
     private int CountLivingDescendants(long personId)
     {
-        var children = _people.Where(p => p.FatherId == personId || p.MotherId == personId);
+        var livingPeople = GetLivingPeople();
+        
+        // Get all children
+        var children = _people.Where(p => p.FatherId == personId || p.MotherId == personId).ToList();
+        
+        // Count living children
         int count = children.Count(c => c.IsAlive);
         
+        // Count descendants of all children recursively
         foreach (var child in children)
         {
             count += CountLivingDescendants(child.Id);

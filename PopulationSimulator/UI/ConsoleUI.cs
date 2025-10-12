@@ -40,15 +40,9 @@ public class ConsoleUI
         
         _lastUpdate = DateTime.Now;
         
-        // Clear screen on force redraw
-        if (_forceRedraw)
-        {
-            Console.Clear();
-            _forceRedraw = false;
-        }
-        
-        // Build screen content in buffer
-        _screenBuffer.Clear();
+        // Always clear screen to prevent corruption
+        Console.Clear();
+        _forceRedraw = false;
         
         Console.SetCursorPosition(0, 0);
         
