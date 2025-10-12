@@ -287,8 +287,8 @@ public class NameGenerator
     
     public string GenerateLastName(string? fatherName, string? cityName, string? jobName, int generationNumber)
     {
-        // Early generations: patronymic names
-        if (generationNumber < 10 && !string.IsNullOrEmpty(fatherName))
+        // Early generations: patronymic names (only if father name is known)
+        if (generationNumber < 10 && !string.IsNullOrEmpty(fatherName) && fatherName != "Unknown")
         {
             return $"ben {fatherName}"; // "son of"
         }
@@ -305,12 +305,13 @@ public class NameGenerator
             return jobName;
         }
         
-        // Fallback: patronymic
-        if (!string.IsNullOrEmpty(fatherName))
+        // Fallback: patronymic (only if father name is known and not "Unknown")
+        if (!string.IsNullOrEmpty(fatherName) && fatherName != "Unknown")
         {
             return $"ben {fatherName}";
         }
         
+        // Last resort: use mother's last name or "Unknown"
         return "Unknown";
     }
     

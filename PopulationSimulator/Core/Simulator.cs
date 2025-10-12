@@ -727,7 +727,8 @@ public class Simulator
                 // Update global generation counter
                 _generationNumber = Math.Max(_generationNumber, childGeneration);
                 
-                string fatherName = father?.FirstName ?? "Unknown";
+                // Don't use "Unknown" as father name - use empty string so naming logic falls through correctly
+                string fatherName = father?.FirstName ?? string.Empty;
                 long? fatherId = father?.Id;
                 string cityName = mother.CityId.HasValue && _citiesById.ContainsKey(mother.CityId.Value) 
                     ? _citiesById[mother.CityId.Value].Name 
@@ -736,7 +737,8 @@ public class Simulator
                     ? _jobsById[father.JobId.Value].Name 
                     : string.Empty;
                 
-                string lastName = _nameGenerator.GenerateLastName(fatherName, cityName, jobName, childGeneration);
+                // Use global generation number for naming convention, not child's individual generation
+                string lastName = _nameGenerator.GenerateLastName(fatherName, cityName, jobName, _generationNumber);
                 
                 var child = CreatePerson(firstName, lastName, gender, fatherId, mother.Id);
                 AddPerson(child);
