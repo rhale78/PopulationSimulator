@@ -13,6 +13,7 @@ public class Simulator
     private readonly List<Person> _people = new();
     private readonly Dictionary<long, Person> _peopleById = new();
     private readonly Dictionary<long, Person> _deadPeopleById = new(); // Track dead people for name lookup
+    private readonly List<Person> _livingPeopleCache = new(); // Cache of living people for performance
     private readonly List<City> _cities = new();
     private readonly Dictionary<long, City> _citiesById = new();
     private readonly List<Country> _countries = new();
@@ -33,6 +34,7 @@ public class Simulator
     private int _generationNumber = 0;
     private int _syncCounter = 0;
     private const int SYNC_INTERVAL = 100; // Sync every 100 days
+    private bool _livingCacheValid = false;
 
     private long? _adamId;
     private long? _eveId;
@@ -266,6 +268,22 @@ public class Simulator
     {
         _people.Add(person);
         _peopleById[person.Id] = person;
+        _livingCacheValid = false; // Invalidate cache when adding person
+    }
+    
+    private List<Person> GetLivingPeople()
+    {
+        if (!_livingCacheValid)
+        {
+            _livingPeopleCache.Clear();
+            foreach (var person in _people)
+            {
+                if (person.IsAlive)
+                    _livingPeopleCache.Add(person);
+            }
+            _livingCacheValid = true;
+        }
+        return _livingPeopleCache;
     }
     
     private void MarryCouple(Person person1, Person person2)
@@ -326,7 +344,7 @@ public class Simulator
     private void ProcessDeaths()
     {
         // Cache living people to avoid multiple enumerations
-        var livingPeople = _people.Where(p => p.IsAlive).ToList();
+        var livingPeople = GetLivingPeople().ToList(); // ToList to avoid collection modification
         
         foreach (var person in livingPeople)
         {
@@ -337,6 +355,7 @@ public class Simulator
             {
                 person.IsAlive = false;
                 person.DeathDate = _currentDate;
+                _livingCacheValid = false; // Invalidate cache when someone dies
                 
                 // Add to dead people dictionary for later lookup
                 if (!_deadPeopleById.ContainsKey(person.Id))
@@ -595,8 +614,11 @@ public class Simulator
     
     private void ProcessPregnancies()
     {
+        // Get living people once
+        var livingPeople = GetLivingPeople();
+        
         // Cache living count for pregnancy chance calculation
-        int totalPeople = _people.Count(p => p.IsAlive);
+        int totalPeople = livingPeople.Count;
         
         // Determine pregnancy chance based on population size
         double basePregnancyChance = totalPeople < 50 ? 0.20 :
@@ -606,7 +628,7 @@ public class Simulator
                                 0.02;
         
         // Single pass through people to find eligible females
-        foreach (var female in _people)
+        foreach (var female in livingPeople)
         {
             if (!CanHaveChildren(female)) continue;
             
@@ -733,10 +755,20 @@ public class Simulator
     
     private int CountGenerations(long personId)
     {
-        if (!_peopleById.ContainsKey(personId))
+        // Check both living and dead people
+        Person? person = null;
+        if (_peopleById.ContainsKey(personId))
+        {
+            person = _peopleById[personId];
+        }
+        else if (_deadPeopleById.ContainsKey(personId))
+        {
+            person = _deadPeopleById[personId];
+        }
+        
+        if (person == null)
             return 0;
         
-        var person = _peopleById[personId];
         if (!person.MotherId.HasValue && !person.FatherId.HasValue)
             return 1;
         
@@ -992,14 +1024,16 @@ public class Simulator
     
     public SimulationStats GetStats()
     {
+        var livingPeople = GetLivingPeople();
+        
         return new SimulationStats
         {
             CurrentDate = _currentDate,
             TotalPopulation = _people.Count,
-            LivingPopulation = _people.Count(p => p.IsAlive),
+            LivingPopulation = livingPeople.Count,
             TotalBirths = _people.Count,
-            TotalDeaths = _people.Count(p => !p.IsAlive),
-            TotalMarriages = _people.Count(p => p.IsMarried) / 2,
+            TotalDeaths = _people.Count - livingPeople.Count,
+            TotalMarriages = livingPeople.Count(p => p.IsMarried) / 2,
             TotalCities = _cities.Count,
             TotalCountries = _countries.Count,
             TotalReligions = _religions.Count,
@@ -1014,8 +1048,10 @@ public class Simulator
     
     private List<JobStatistic> GetTopJobs()
     {
-        var jobStats = _people
-            .Where(p => p.IsAlive && p.JobId.HasValue)
+        var livingPeople = GetLivingPeople();
+        
+        var jobStats = livingPeople
+            .Where(p => p.JobId.HasValue)
             .GroupBy(p => p.JobId!.Value)
             .Select(g => new JobStatistic
             {
