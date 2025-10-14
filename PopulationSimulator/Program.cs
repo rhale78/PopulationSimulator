@@ -10,19 +10,25 @@ class Program
 {
     static async Task Main(string[] args)
     {
-        // Show welcome screen
+        // Show welcome message
         AnsiConsole.Clear();
-        await AppHost.RunAsync<Welcome>(null, builder =>
-        {
-            builder.Configure(options =>
-            {
-                options.AutoClearConsole = false;
-            });
-        });
+        AnsiConsole.Write(new FigletText("PopSim").Centered().Color(Spectre.Console.Color.Cyan1));
+        AnsiConsole.MarkupLine("[yellow]Advanced Population Simulator - A Living, Evolving World[/]");
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[white]Starting with Adam and Eve, watch humanity grow into a complex civilization.[/]");
+        AnsiConsole.MarkupLine("[grey]Press any key to begin...[/]");
         
-        Console.ReadKey(true);
+        if (Console.IsInputRedirected)
+        {
+            await Task.Delay(2000); // Auto-start for testing
+        }
+        else
+        {
+            Console.ReadKey(true);
+        }
         
         // Run main application
+        AnsiConsole.Clear();
         await AppHost.RunAsync<App>(null, builder =>
         {
             builder.ConfigureServices(services =>
@@ -41,7 +47,11 @@ class Program
         AnsiConsole.MarkupLine("[cyan]Simulation ended. Database has been saved.[/]");
         AnsiConsole.MarkupLine("[cyan]Thank you for using the Advanced Population Simulator![/]");
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine("Press any key to exit...");
-        Console.ReadKey(true);
+        
+        if (!Console.IsInputRedirected)
+        {
+            AnsiConsole.MarkupLine("Press any key to exit...");
+            Console.ReadKey(true);
+        }
     }
 }
