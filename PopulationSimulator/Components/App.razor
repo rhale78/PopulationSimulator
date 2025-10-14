@@ -1,0 +1,84 @@
+@namespace PopulationSimulator.Components
+
+@using PopulationSimulator.Core
+@using PopulationSimulator.Services
+@using RazorConsole.Components
+@using Spectre.Console
+@using Microsoft.AspNetCore.Components
+
+@inject SimulatorService SimulatorService
+
+@implements IDisposable
+
+<Rows>
+    <Panel Title="ADVANCED POPULATION SIMULATOR - Living World" 
+           BorderColor="@Color.Cyan1" 
+           Border="BoxBorder.Double"
+           Expand="true">
+        <Columns>
+            <Markup Content="@($"Current Date: Year {_stats.CurrentDate.Year}, Day {_stats.CurrentDate.DayOfYear}")" 
+                    Foreground="@Color.Yellow" />
+            <Markup Content="@($"Generation: {_stats.GenerationNumber}")" 
+                    Foreground="@Color.Yellow" />
+            <Markup Content="@($"Speed: {_simulationSpeed}x")" 
+                    Foreground="@Color.Yellow" />
+        </Columns>
+    </Panel>
+
+    <PopulationStatsPanel Stats="@_stats" />
+
+    @if (_stats.TopJobs.Any())
+    {
+        <TopJobsPanel TopJobs="@_stats.TopJobs" />
+    }
+
+    <CivilizationPanel Stats="@_stats" />
+
+    @if (_stats.FamilyTrees.Any())
+    {
+        <FamilyTreePanel FamilyTree="@_stats.FamilyTrees.First()" />
+    }
+
+    <RecentEventsPanel Events="@_stats.RecentEvents" />
+
+    <Panel Title="CONTROLS" 
+           BorderColor="@Color.Grey" 
+           Border="BoxBorder.Rounded"
+           Expand="true">
+        <Markup Content="[+] speed up, [-] slow down, [Q] quit" 
+                Foreground="@Color.Grey" />
+    </Panel>
+</Rows>
+
+@code {
+    private SimulationStats _stats = new();
+    private int _simulationSpeed = 1;
+
+    protected override void OnInitialized()
+    {
+        SimulatorService.OnStatsUpdated += HandleStatsUpdated;
+        SimulatorService.OnSpeedChanged += HandleSpeedChanged;
+        
+        // Start the simulation
+        SimulatorService.Start();
+    }
+
+    private void HandleStatsUpdated(SimulationStats stats)
+    {
+        _stats = stats;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleSpeedChanged(int speed)
+    {
+        _simulationSpeed = speed;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        SimulatorService.OnStatsUpdated -= HandleStatsUpdated;
+        SimulatorService.OnSpeedChanged -= HandleSpeedChanged;
+        SimulatorService.Stop();
+    }
+}

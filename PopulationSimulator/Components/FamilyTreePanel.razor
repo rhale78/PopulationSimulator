@@ -1,0 +1,73 @@
+@namespace PopulationSimulator.Components
+
+@using PopulationSimulator.Core
+@using RazorConsole.Components
+@using Spectre.Console
+
+<Panel Title="ACTIVE FAMILY TREE" 
+       BorderColor="@Color.Cyan1" 
+       Border="BoxBorder.Double"
+       Expand="true"
+       Height="20">
+    <Rows>
+        @RenderFamilyTreeNode(FamilyTree, 0)
+    </Rows>
+</Panel>
+
+@code {
+    [Parameter]
+    public FamilyTreeNode FamilyTree { get; set; } = new();
+
+    private const int MaxWidth = 75;
+    private const int MaxDepth = 3;
+    private const int MaxChildren = 10;
+
+    private RenderFragment RenderFamilyTreeNode(FamilyTreeNode node, int depth)
+    {
+        return builder =>
+        {
+            if (depth > MaxDepth) return;
+
+            var indent = new string(' ', depth * 2);
+            var marker = depth == 0 ? "■ " : "└─";
+            var genderMarker = node.Gender == "Male" ? "♂" : "♀";
+            var color = node.IsAlive 
+                ? (node.Gender == "Male" ? Color.Blue : Color.Magenta1) 
+                : Color.Grey;
+
+            var status = node.IsAlive ? $"Age {node.Age}" : "†";
+            var spouse = !string.IsNullOrEmpty(node.SpouseName) ? $" ♥ {node.SpouseName}" : "";
+            var line = $"{indent}{marker}{genderMarker} {node.FirstName} {node.LastName} ({status}){spouse}";
+
+            // Truncate if too long
+            if (line.Length > MaxWidth)
+            {
+                line = line.Substring(0, MaxWidth - 3) + "...";
+            }
+
+            builder.OpenComponent<RazorConsole.Components.Markup>(0);
+            builder.AddAttribute(1, "Content", line);
+            builder.AddAttribute(2, "Foreground", color);
+            builder.CloseComponent();
+
+            // Render children
+            var childrenToShow = node.Children.Take(MaxChildren).ToList();
+            foreach (var child in childrenToShow)
+            {
+                builder.AddContent(3, RenderFamilyTreeNode(child, depth + 1));
+            }
+
+            // Show "and X more" if there are more children
+            if (node.Children.Count > MaxChildren)
+            {
+                var moreIndent = new string(' ', (depth + 1) * 2);
+                var moreLine = $"{moreIndent}... and {node.Children.Count - MaxChildren} more";
+                
+                builder.OpenComponent<RazorConsole.Components.Markup>(4);
+                builder.AddAttribute(5, "Content", moreLine);
+                builder.AddAttribute(6, "Foreground", Color.Grey);
+                builder.CloseComponent();
+            }
+        };
+    }
+}

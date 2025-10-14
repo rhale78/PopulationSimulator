@@ -1,0 +1,58 @@
+@namespace PopulationSimulator.Components
+
+@using PopulationSimulator.Core
+@using PopulationSimulator.Models
+@using RazorConsole.Components
+@using Spectre.Console
+
+<Panel Title="RECENT EVENTS" 
+       BorderColor="@Color.White" 
+       Border="BoxBorder.Double"
+       Expand="true"
+       Height="15">
+    <Rows>
+        @if (!Events.Any())
+        {
+            <Markup Content="No events yet..." Foreground="@Color.Grey" />
+        }
+        else
+        {
+            @foreach (var evt in Events.TakeLast(10))
+            {
+                var color = GetEventColor(evt.EventType);
+                var eventText = $"[{evt.EventType,-12}] {evt.Description}";
+                
+                // Truncate if too long
+                if (eventText.Length > MaxEventWidth)
+                {
+                    eventText = eventText.Substring(0, MaxEventWidth - 3) + "...";
+                }
+
+                <Markup Content="@eventText" Foreground="@color" />
+            }
+        }
+    </Rows>
+</Panel>
+
+@code {
+    [Parameter]
+    public List<Event> Events { get; set; } = new();
+
+    private const int MaxEventWidth = 75;
+
+    private Color GetEventColor(string eventType)
+    {
+        return eventType switch
+        {
+            "Birth" => Color.Green,
+            "Death" => Color.Red,
+            "Marriage" => Color.Yellow,
+            "City" => Color.Cyan1,
+            "Country" => Color.Magenta1,
+            "Religion" => Color.Blue,
+            "Invention" => Color.Yellow,
+            "War" => Color.DarkRed,
+            _ => Color.Grey
+        };
+    }
+}

@@ -1,0 +1,25 @@
+@namespace PopulationSimulator.Components
+
+@using PopulationSimulator.Core
+@using RazorConsole.Components
+@using Spectre.Console
+
+<Panel Title="TOP OCCUPATIONS" 
+       BorderColor="@Color.Yellow" 
+       Border="BoxBorder.Double"
+       Expand="true">
+    <Rows>
+        @foreach (var job in TopJobs.Take(5))
+        {
+            <Columns>
+                <Markup Content="@job.JobName" Foreground="@Color.White" />
+                <Markup Content="@($"{job.Count} people")" Foreground="@Color.Yellow" />
+            </Columns>
+        }
+    </Rows>
+</Panel>
+
+@code {
+    [Parameter]
+    public List<JobStatistic> TopJobs { get; set; } = new();
+}

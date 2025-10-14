@@ -1,69 +1,47 @@
-﻿using PopulationSimulator.Core;
-using PopulationSimulator.UI;
+﻿using PopulationSimulator.Components;
+using PopulationSimulator.Services;
+using Microsoft.Extensions.DependencyInjection;
+using RazorConsole.Core;
+using Spectre.Console;
 
 namespace PopulationSimulator;
 
 class Program
 {
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
-        var ui = new ConsoleUI();
-        ui.ShowWelcome();
-        
-        var simulator = new Simulator();
-        simulator.Initialize();
-        
-        ui.Initialize();
-        
-        int simulationSpeed = 1;
-        bool running = true;
-        
-        // Main simulation loop
-        Task.Run(() =>
+        // Show welcome screen
+        AnsiConsole.Clear();
+        await AppHost.RunAsync<Welcome>(null, builder =>
         {
-            while (running)
+            builder.Configure(options =>
             {
-                for (int i = 0; i < simulationSpeed; i++)
-                {
-                    simulator.SimulateDay();
-                }
-                
-                var stats = simulator.GetStats();
-                ui.Update(stats, simulationSpeed);
-                
-                Thread.Sleep(50); // Update rate
-            }
+                options.AutoClearConsole = false;
+            });
         });
         
-        // Input handling
-        while (running)
-        {
-            if (Console.KeyAvailable)
-            {
-                var key = Console.ReadKey(true);
-                
-                switch (key.Key)
-                {
-                    case ConsoleKey.Q:
-                        running = false;
-                        break;
-                    case ConsoleKey.OemPlus:
-                    case ConsoleKey.Add:
-                        simulationSpeed = Math.Min(simulationSpeed + 1, 100);
-                        break;
-                    case ConsoleKey.OemMinus:
-                    case ConsoleKey.Subtract:
-                        simulationSpeed = Math.Max(simulationSpeed - 1, 1);
-                        break;
-                    case ConsoleKey.R:
-                        ui.ForceRedraw();
-                        break;
-                }
-            }
-            
-            Thread.Sleep(50);
-        }
+        Console.ReadKey(true);
         
-        ui.ShowShutdown();
+        // Run main application
+        await AppHost.RunAsync<App>(null, builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.AddSingleton<SimulatorService>();
+            });
+            
+            builder.Configure(options =>
+            {
+                options.AutoClearConsole = true;
+            });
+        });
+        
+        // Shutdown
+        AnsiConsole.Clear();
+        AnsiConsole.MarkupLine("[cyan]Simulation ended. Database has been saved.[/]");
+        AnsiConsole.MarkupLine("[cyan]Thank you for using the Advanced Population Simulator![/]");
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("Press any key to exit...");
+        Console.ReadKey(true);
     }
 }

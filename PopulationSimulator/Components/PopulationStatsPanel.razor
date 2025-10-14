@@ -1,0 +1,34 @@
+@namespace PopulationSimulator.Components
+
+@using PopulationSimulator.Core
+@using RazorConsole.Components
+@using Spectre.Console
+
+<Panel Title="POPULATION STATISTICS" 
+       BorderColor="@Color.Green" 
+       Border="BoxBorder.Double"
+       Expand="true">
+    <Rows>
+        <Columns>
+            <Markup Content="Living Population:" Foreground="@Color.White" />
+            <Markup Content="@Stats.LivingPopulation.ToString("N0")" Foreground="@Color.Green" Decoration="@Decoration.Bold" />
+        </Columns>
+        <Columns>
+            <Markup Content="Total Births:" Foreground="@Color.White" />
+            <Markup Content="@Stats.TotalBirths.ToString("N0")" Foreground="@Color.Green" />
+        </Columns>
+        <Columns>
+            <Markup Content="Total Deaths:" Foreground="@Color.White" />
+            <Markup Content="@Stats.TotalDeaths.ToString("N0")" Foreground="@Color.Red" />
+        </Columns>
+        <Columns>
+            <Markup Content="Total Marriages:" Foreground="@Color.White" />
+            <Markup Content="@Stats.TotalMarriages.ToString("N0")" Foreground="@Color.Yellow" />
+        </Columns>
+    </Rows>
+</Panel>
+
+@code {
+    [Parameter]
+    public SimulationStats Stats { get; set; } = new();
+}
