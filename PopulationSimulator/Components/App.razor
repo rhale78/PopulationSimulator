@@ -45,8 +45,12 @@
            BorderColor="@Color.Grey" 
            Border="BoxBorder.Rounded"
            Expand="true">
-        <Markup Content="[+] speed up, [-] slow down, [Q] quit" 
-                Foreground="@Color.Grey" />
+        <Columns>
+            <TextButton Content="[+] Speed Up" OnClick="@SimulatorService.IncreaseSpeed" BackgroundColor="@Color.Green" FocusedColor="@Color.Lime" />
+            <TextButton Content="[-] Slow Down" OnClick="@SimulatorService.DecreaseSpeed" BackgroundColor="@Color.Yellow" FocusedColor="@Color.Orange1" />
+            <Markup Content="Use Tab to switch focus, Enter to click, Ctrl+C to quit" 
+                    Foreground="@Color.Grey" />
+        </Columns>
     </Panel>
 </Rows>
 
