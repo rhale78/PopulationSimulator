@@ -1,0 +1,37 @@
+@namespace PopulationSimulator.Components
+
+@using RazorConsole.Components
+@using Spectre.Console
+
+<Rows>
+    <Figlet Content="PopSim" />
+    
+    <Align Horizontal="@HorizontalAlignment.Center">
+        <Panel Title="ADVANCED POPULATION SIMULATOR" 
+               BorderColor="@Color.Cyan1" 
+               Border="BoxBorder.Double"
+               Width="80">
+            <Rows>
+                <Markup Content="A Living, Evolving World" 
+                        Foreground="@Color.Yellow" 
+                        Decoration="@Decoration.Bold" />
+                <Newline />
+                <Markup Content="Starting with Adam and Eve, watch as humanity grows from a single couple" 
+                        Foreground="@Color.White" />
+                <Markup Content="into a complex civilization with cities, countries, religions, inventions," 
+                        Foreground="@Color.White" />
+                <Markup Content="and wars. Each person has unique traits, genetics, and life events." 
+                        Foreground="@Color.White" />
+                <Newline />
+                <Markup Content="The simulation runs autonomously, with societies and cultures emerging" 
+                        Foreground="@Color.White" />
+                <Markup Content="organically from individual interactions and decisions." 
+                        Foreground="@Color.White" />
+                <Newline />
+                <Markup Content="Press any key to begin the simulation..." 
+                        Foreground="@Color.Green" 
+                        Decoration="@Decoration.Bold" />
+            </Rows>
+        </Panel>
+    </Align>
+</Rows>

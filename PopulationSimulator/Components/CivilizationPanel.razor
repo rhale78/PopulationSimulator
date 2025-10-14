@@ -1,0 +1,38 @@
+@namespace PopulationSimulator.Components
+
+@using PopulationSimulator.Core
+@using RazorConsole.Components
+@using Spectre.Console
+
+<Panel Title="CIVILIZATION PROGRESS" 
+       BorderColor="@Color.Magenta1" 
+       Border="BoxBorder.Double"
+       Expand="true">
+    <Rows>
+        <Columns>
+            <Markup Content="Cities:" Foreground="@Color.White" />
+            <Markup Content="@Stats.TotalCities.ToString()" Foreground="@Color.Cyan1" />
+        </Columns>
+        <Columns>
+            <Markup Content="Countries:" Foreground="@Color.White" />
+            <Markup Content="@Stats.TotalCountries.ToString()" Foreground="@Color.Magenta1" />
+        </Columns>
+        <Columns>
+            <Markup Content="Religions:" Foreground="@Color.White" />
+            <Markup Content="@Stats.TotalReligions.ToString()" Foreground="@Color.Blue" />
+        </Columns>
+        <Columns>
+            <Markup Content="Inventions:" Foreground="@Color.White" />
+            <Markup Content="@Stats.TotalInventions.ToString()" Foreground="@Color.Yellow" />
+        </Columns>
+        <Columns>
+            <Markup Content="Wars:" Foreground="@Color.White" />
+            <Markup Content="@Stats.TotalWars.ToString()" Foreground="@Color.Red" />
+        </Columns>
+    </Rows>
+</Panel>
+
+@code {
+    [Parameter]
+    public SimulationStats Stats { get; set; } = new();
+}

@@ -1,69 +1,58 @@
-﻿using PopulationSimulator.Core;
-using PopulationSimulator.UI;
+﻿using PopulationSimulator.Components;
+using PopulationSimulator.Services;
+using Microsoft.Extensions.DependencyInjection;
+using RazorConsole.Core;
+using Spectre.Console;
 
 namespace PopulationSimulator;
 
 class Program
 {
-    static void Main(string[] args)
+    static async Task Main(string[] args)
     {
-        var ui = new ConsoleUI();
-        ui.ShowWelcome();
+        // Show welcome message
+        AnsiConsole.Clear();
+        AnsiConsole.Write(new FigletText("PopSim").Centered().Color(Spectre.Console.Color.Cyan1));
+        AnsiConsole.MarkupLine("[yellow]Advanced Population Simulator - A Living, Evolving World[/]");
+        AnsiConsole.WriteLine();
+        AnsiConsole.MarkupLine("[white]Starting with Adam and Eve, watch humanity grow into a complex civilization.[/]");
+        AnsiConsole.MarkupLine("[grey]Press any key to begin...[/]");
         
-        var simulator = new Simulator();
-        simulator.Initialize();
-        
-        ui.Initialize();
-        
-        int simulationSpeed = 1;
-        bool running = true;
-        
-        // Main simulation loop
-        Task.Run(() =>
+        if (Console.IsInputRedirected)
         {
-            while (running)
-            {
-                for (int i = 0; i < simulationSpeed; i++)
-                {
-                    simulator.SimulateDay();
-                }
-                
-                var stats = simulator.GetStats();
-                ui.Update(stats, simulationSpeed);
-                
-                Thread.Sleep(50); // Update rate
-            }
-        });
-        
-        // Input handling
-        while (running)
+            await Task.Delay(2000); // Auto-start for testing
+        }
+        else
         {
-            if (Console.KeyAvailable)
-            {
-                var key = Console.ReadKey(true);
-                
-                switch (key.Key)
-                {
-                    case ConsoleKey.Q:
-                        running = false;
-                        break;
-                    case ConsoleKey.OemPlus:
-                    case ConsoleKey.Add:
-                        simulationSpeed = Math.Min(simulationSpeed + 1, 100);
-                        break;
-                    case ConsoleKey.OemMinus:
-                    case ConsoleKey.Subtract:
-                        simulationSpeed = Math.Max(simulationSpeed - 1, 1);
-                        break;
-                    case ConsoleKey.R:
-                        ui.ForceRedraw();
-                        break;
-                }
-            }
-            
-            Thread.Sleep(50);
+            Console.ReadKey(true);
         }
         
-        ui.ShowShutdown();
+        // Run main application
+        AnsiConsole.Clear();
+        await AppHost.RunAsync<App>(null, builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.AddSingleton<SimulatorService>();
+            });
+            
+            builder.Configure(options =>
+            {
+                // Disable auto-clear to prevent screen corruption
+                options.AutoClearConsole = false;
+            });
+        });
+        
+        // Shutdown
+        AnsiConsole.Clear();
+        AnsiConsole.MarkupLine("[cyan]Simulation ended. Database has been saved.[/]");
+        AnsiConsole.MarkupLine("[cyan]Thank you for using the Advanced Population Simulator![/]");
+        AnsiConsole.WriteLine();
+        
+        if (!Console.IsInputRedirected)
+        {
+            AnsiConsole.MarkupLine("Press any key to exit...");
+            Console.ReadKey(true);
+        }
     }
 }
