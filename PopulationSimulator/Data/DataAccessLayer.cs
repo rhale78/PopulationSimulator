@@ -112,7 +112,9 @@ public class DataAccessLayer
                 DiscoveredDate TEXT NOT NULL,
                 InventorId INTEGER,
                 RequiredIntelligence INTEGER NOT NULL,
-                Category TEXT NOT NULL
+                Category TEXT NOT NULL,
+                HealthBonus INTEGER NOT NULL DEFAULT 0,
+                LifespanBonus INTEGER NOT NULL DEFAULT 0
             );
             
             CREATE TABLE IF NOT EXISTS Wars (
@@ -160,6 +162,43 @@ public class DataAccessLayer
             );
         ";
         command.ExecuteNonQuery();
+        
+        // Migrate existing Inventions table to add HealthBonus and LifespanBonus if they don't exist
+        try
+        {
+            var checkCommand = connection.CreateCommand();
+            checkCommand.CommandText = "PRAGMA table_info(Inventions)";
+            var reader = checkCommand.ExecuteReader();
+            bool hasHealthBonus = false;
+            bool hasLifespanBonus = false;
+            
+            while (reader.Read())
+            {
+                string columnName = reader.GetString(1);
+                if (columnName == "HealthBonus") hasHealthBonus = true;
+                if (columnName == "LifespanBonus") hasLifespanBonus = true;
+            }
+            reader.Close();
+            
+            // Add missing columns if needed
+            if (!hasHealthBonus)
+            {
+                var alterCommand = connection.CreateCommand();
+                alterCommand.CommandText = "ALTER TABLE Inventions ADD COLUMN HealthBonus INTEGER NOT NULL DEFAULT 0";
+                alterCommand.ExecuteNonQuery();
+            }
+            
+            if (!hasLifespanBonus)
+            {
+                var alterCommand = connection.CreateCommand();
+                alterCommand.CommandText = "ALTER TABLE Inventions ADD COLUMN LifespanBonus INTEGER NOT NULL DEFAULT 0";
+                alterCommand.ExecuteNonQuery();
+            }
+        }
+        catch
+        {
+            // Ignore errors - table might not exist yet or columns might already be there
+        }
     }
     
     public void SavePeople(List<Person> people)
@@ -475,8 +514,8 @@ public class DataAccessLayer
             {
                 var command = connection.CreateCommand();
                 command.CommandText = @"
-                    INSERT INTO Inventions (Name, Description, DiscoveredDate, InventorId, RequiredIntelligence, Category)
-                    VALUES (@Name, @Description, @DiscoveredDate, @InventorId, @RequiredIntelligence, @Category)
+                    INSERT INTO Inventions (Name, Description, DiscoveredDate, InventorId, RequiredIntelligence, Category, HealthBonus, LifespanBonus)
+                    VALUES (@Name, @Description, @DiscoveredDate, @InventorId, @RequiredIntelligence, @Category, @HealthBonus, @LifespanBonus)
                 ";
                 command.Parameters.AddWithValue("@Name", invention.Name);
                 command.Parameters.AddWithValue("@Description", invention.Description);
@@ -484,6 +523,8 @@ public class DataAccessLayer
                 command.Parameters.AddWithValue("@InventorId", invention.InventorId ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@RequiredIntelligence", invention.RequiredIntelligence);
                 command.Parameters.AddWithValue("@Category", invention.Category);
+                command.Parameters.AddWithValue("@HealthBonus", invention.HealthBonus);
+                command.Parameters.AddWithValue("@LifespanBonus", invention.LifespanBonus);
                 command.ExecuteNonQuery();
                 
                 var idCommand = connection.CreateCommand();

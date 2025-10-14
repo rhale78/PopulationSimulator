@@ -55,6 +55,9 @@ class Program
                     case ConsoleKey.Subtract:
                         simulationSpeed = Math.Max(simulationSpeed - 1, 1);
                         break;
+                    case ConsoleKey.R:
+                        ui.ForceRedraw();
+                        break;
                 }
             }
             
