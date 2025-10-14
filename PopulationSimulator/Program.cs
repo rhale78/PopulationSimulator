@@ -38,7 +38,8 @@ class Program
             
             builder.Configure(options =>
             {
-                options.AutoClearConsole = true;
+                // Disable auto-clear to prevent screen corruption
+                options.AutoClearConsole = false;
             });
         });
         

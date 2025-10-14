@@ -64,6 +64,14 @@ RazorConsole automatically handles:
 - **UI/ConsoleUI.cs**: Completely replaced by Razor components
 - Old manual buffering and console manipulation code removed
 
+### 8. Screen Corruption Prevention
+
+To prevent screen corruption issues:
+- **Update Throttling**: UI updates limited to every 500ms instead of 50ms
+- **AutoClearConsole**: Disabled to prevent excessive screen clearing
+- **Lock Mechanism**: Thread-safe update handling to prevent concurrent renders
+- **Simulation Decoupling**: Simulation runs at 50ms tick rate, UI updates at 500ms
+
 ## Benefits of RazorConsole
 
 1. **Component-Based UI**: Modular, reusable UI components
@@ -88,4 +96,6 @@ The application will show a welcome screen, then automatically (or after keypres
 - All rendering is done through Spectre.Console for rich terminal output
 - Components automatically update when their parameters change
 - The simulation runs in a background task and updates UI via events
-- UI update rate is throttled to 50ms (20 FPS) to avoid performance issues
+- UI update rate is throttled to 500ms (2 FPS) to prevent screen corruption
+- AutoClearConsole is disabled to prevent excessive screen clearing
+- Thread-safe locking mechanism prevents concurrent UI updates

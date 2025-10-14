@@ -66,10 +66,11 @@ All Razor components created and working:
 
 ## Performance
 
-- UI update rate: 50ms (20 FPS)
+- UI update rate: 500ms (2 FPS) - throttled to prevent screen corruption
 - Simulation rate: 50ms per tick (configurable with speed multiplier)
-- Smooth updates without flicker
-- Efficient component rendering
+- Smooth updates with proper throttling
+- Thread-safe update mechanism prevents concurrent renders
+- AutoClearConsole disabled to prevent screen corruption
 
 ## Compatibility
 

@@ -7,6 +7,8 @@ public class SimulatorService
     private readonly Simulator _simulator;
     private int _simulationSpeed = 1;
     private bool _running = true;
+    private DateTime _lastUIUpdate = DateTime.Now;
+    private readonly object _updateLock = new();
     
     public event Action<SimulationStats>? OnStatsUpdated;
     public event Action<int>? OnSpeedChanged;
@@ -28,10 +30,19 @@ public class SimulatorService
                     _simulator.SimulateDay();
                 }
                 
-                var stats = _simulator.GetStats();
-                OnStatsUpdated?.Invoke(stats);
+                // Throttle UI updates to prevent screen corruption
+                // Only update UI every 500ms instead of every 50ms
+                if ((DateTime.Now - _lastUIUpdate).TotalMilliseconds >= 500)
+                {
+                    lock (_updateLock)
+                    {
+                        var stats = _simulator.GetStats();
+                        OnStatsUpdated?.Invoke(stats);
+                        _lastUIUpdate = DateTime.Now;
+                    }
+                }
                 
-                await Task.Delay(50); // Update rate
+                await Task.Delay(50); // Simulation tick rate
             }
         });
     }
