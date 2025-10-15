@@ -1261,6 +1261,7 @@ public class Simulator
             {
                 CurrentDay = _currentDay,
                 CurrentYear = DayToYear(_currentDay),
+                CurrentDayOfYear = DayOfYear(_currentDay),
                 TotalPopulation = _people.Count,
                 LivingPopulation = livingPeople.Count,
                 TotalBirths = _people.Count,
@@ -1311,6 +1312,7 @@ public class Simulator
         {
             CurrentDay = _currentDay,
             CurrentYear = DayToYear(_currentDay),
+            CurrentDayOfYear = DayOfYear(_currentDay),
             TotalPopulation = _people.Count,
             LivingPopulation = 0,
             TotalBirths = _people.Count,
@@ -1543,6 +1545,7 @@ public class SimulationStats
 {
     public int CurrentDay { get; set; } // Days since simulation start
     public int CurrentYear { get; set; } // Calculated year (day / 365 + 1)
+    public int CurrentDayOfYear { get; set; } // Day within the year (1-365)
     public int TotalPopulation { get; set; }
     public int LivingPopulation { get; set; }
     public int TotalBirths { get; set; }

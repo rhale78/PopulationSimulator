@@ -12,13 +12,13 @@ public class PersonTests
         // Arrange
         var person = new Person
         {
-            BirthDay = new DateTime(2000, 1, 1),
+            BirthDay = 0, // Day 0
             IsAlive = true
         };
-        var currentDate = new DateTime(2020, 1, 1);
+        var currentDay = 20 * 365; // 20 years later
         
         // Act
-        var age = person.GetAge(currentDate);
+        var age = person.GetAge(currentDay);
         
         // Assert
         Assert.Equal(20, age);
@@ -30,14 +30,14 @@ public class PersonTests
         // Arrange
         var person = new Person
         {
-            BirthDay = new DateTime(2000, 1, 1),
-            DeathDate = new DateTime(2015, 1, 1),
+            BirthDay = 0, // Day 0
+            DeathDay = 15 * 365, // Died at year 15
             IsAlive = false
         };
-        var currentDate = new DateTime(2020, 1, 1);
+        var currentDay = 20 * 365; // 20 years later
         
         // Act
-        var age = person.GetAge(currentDate);
+        var age = person.GetAge(currentDay);
         
         // Assert
         Assert.Equal(15, age);
@@ -58,7 +58,7 @@ public class PersonTests
             Gender = gender,
             IsAlive = isAlive,
             SpouseId = isMarried ? 100L : null,
-            BirthDay = 0.AddYears(-age),
+            BirthDay = -age * 365, // Negative days = born in the past
             IsPregnant = false
         };
         
@@ -81,7 +81,7 @@ public class PersonTests
         {
             IsAlive = isAlive,
             SpouseId = isMarried ? 100L : null,
-            BirthDay = 0.AddYears(-age)
+            BirthDay = -age * 365 // Negative days = born in the past
         };
         
         // Act
@@ -103,7 +103,7 @@ public class PersonTests
         {
             IsAlive = isAlive,
             JobId = hasJob ? 1L : null,
-            BirthDay = 0.AddYears(-age)
+            BirthDay = -age * 365 // Negative days = born in the past
         };
         
         // Act

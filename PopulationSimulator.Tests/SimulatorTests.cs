@@ -36,7 +36,7 @@ public class SimulatorTests
         var stats = simulator.GetStats();
         
         // Assert
-        Assert.True(stats.CurrentDate.DayOfYear >= 30);
+        Assert.True(stats.CurrentDay >= 30);
     }
     
     [Fact]

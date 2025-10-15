@@ -216,19 +216,19 @@ public class DataAccessLayer
             if (person.Id <= 0)
             {
                 command.CommandText = @"
-                    INSERT INTO People (FirstName, LastName, Gender, BirthDate, DeathDate, IsAlive,
-                        FatherId, MotherId, SpouseId, SecondarySpouseId, MarriageDate,
-                        CityId, CountryId, ReligionId, JobId, JobStartDate,
+                    INSERT INTO People (FirstName, LastName, Gender, BirthDay, DeathDay, IsAlive,
+                        FatherId, MotherId, SpouseId, SecondarySpouseId, MarriageDay,
+                        CityId, CountryId, ReligionId, JobId, JobStartDay,
                         Intelligence, Strength, Health, Fertility, Charisma, Creativity,
                         Leadership, Aggression, Wisdom, Beauty, EyeColor, HairColor, Height,
-                        IsPregnant, PregnancyDueDate, PregnancyFatherId, PregnancyMultiplier,
+                        IsPregnant, PregnancyDueDay, PregnancyFatherId, PregnancyMultiplier,
                         DynastyId, IsRuler, Wealth, SocialStatus)
-                    VALUES (@FirstName, @LastName, @Gender, @BirthDate, @DeathDate, @IsAlive,
-                        @FatherId, @MotherId, @SpouseId, @SecondarySpouseId, @MarriageDate,
-                        @CityId, @CountryId, @ReligionId, @JobId, @JobStartDate,
+                    VALUES (@FirstName, @LastName, @Gender, @BirthDay, @DeathDay, @IsAlive,
+                        @FatherId, @MotherId, @SpouseId, @SecondarySpouseId, @MarriageDay,
+                        @CityId, @CountryId, @ReligionId, @JobId, @JobStartDay,
                         @Intelligence, @Strength, @Health, @Fertility, @Charisma, @Creativity,
                         @Leadership, @Aggression, @Wisdom, @Beauty, @EyeColor, @HairColor, @Height,
-                        @IsPregnant, @PregnancyDueDate, @PregnancyFatherId, @PregnancyMultiplier,
+                        @IsPregnant, @PregnancyDueDay, @PregnancyFatherId, @PregnancyMultiplier,
                         @DynastyId, @IsRuler, @Wealth, @SocialStatus)
                 ";
             }
@@ -236,16 +236,16 @@ public class DataAccessLayer
             {
                 command.CommandText = @"
                     UPDATE People SET FirstName=@FirstName, LastName=@LastName, Gender=@Gender,
-                        BirthDate=@BirthDate, DeathDate=@DeathDate, IsAlive=@IsAlive,
+                        BirthDay=@BirthDay, DeathDay=@DeathDay, IsAlive=@IsAlive,
                         FatherId=@FatherId, MotherId=@MotherId, SpouseId=@SpouseId,
-                        SecondarySpouseId=@SecondarySpouseId, MarriageDate=@MarriageDate,
+                        SecondarySpouseId=@SecondarySpouseId, MarriageDay=@MarriageDay,
                         CityId=@CityId, CountryId=@CountryId, ReligionId=@ReligionId,
-                        JobId=@JobId, JobStartDate=@JobStartDate,
+                        JobId=@JobId, JobStartDay=@JobStartDay,
                         Intelligence=@Intelligence, Strength=@Strength, Health=@Health,
                         Fertility=@Fertility, Charisma=@Charisma, Creativity=@Creativity,
                         Leadership=@Leadership, Aggression=@Aggression, Wisdom=@Wisdom,
                         Beauty=@Beauty, EyeColor=@EyeColor, HairColor=@HairColor, Height=@Height,
-                        IsPregnant=@IsPregnant, PregnancyDueDate=@PregnancyDueDate,
+                        IsPregnant=@IsPregnant, PregnancyDueDay=@PregnancyDueDay,
                         PregnancyFatherId=@PregnancyFatherId, PregnancyMultiplier=@PregnancyMultiplier,
                         DynastyId=@DynastyId, IsRuler=@IsRuler, Wealth=@Wealth, SocialStatus=@SocialStatus
                     WHERE Id=@Id
@@ -272,19 +272,19 @@ public class DataAccessLayer
         command.Parameters.AddWithValue("@FirstName", person.FirstName);
         command.Parameters.AddWithValue("@LastName", person.LastName);
         command.Parameters.AddWithValue("@Gender", person.Gender);
-        command.Parameters.AddWithValue("@BirthDate", person.BirthDay);
-        command.Parameters.AddWithValue("@DeathDate", person.DeathDay.HasValue ? (object)person.DeathDay.Value : (object)DBNull.Value);
+        command.Parameters.AddWithValue("@BirthDay", person.BirthDay);
+        command.Parameters.AddWithValue("@DeathDay", person.DeathDay.HasValue ? (object)person.DeathDay.Value : (object)DBNull.Value);
         command.Parameters.AddWithValue("@IsAlive", person.IsAlive ? 1 : 0);
         command.Parameters.AddWithValue("@FatherId", person.FatherId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@MotherId", person.MotherId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@SpouseId", person.SpouseId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@SecondarySpouseId", person.SecondarySpouseId ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("@MarriageDate", person.MarriageDay.HasValue ? (object)person.MarriageDay.Value : (object)DBNull.Value);
+        command.Parameters.AddWithValue("@MarriageDay", person.MarriageDay.HasValue ? (object)person.MarriageDay.Value : (object)DBNull.Value);
         command.Parameters.AddWithValue("@CityId", person.CityId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@CountryId", person.CountryId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@ReligionId", person.ReligionId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@JobId", person.JobId ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("@JobStartDate", person.JobStartDay.HasValue ? (object)person.JobStartDay.Value : (object)DBNull.Value);
+        command.Parameters.AddWithValue("@JobStartDay", person.JobStartDay.HasValue ? (object)person.JobStartDay.Value : (object)DBNull.Value);
         command.Parameters.AddWithValue("@Intelligence", person.Intelligence);
         command.Parameters.AddWithValue("@Strength", person.Strength);
         command.Parameters.AddWithValue("@Health", person.Health);
@@ -299,7 +299,7 @@ public class DataAccessLayer
         command.Parameters.AddWithValue("@HairColor", person.HairColor);
         command.Parameters.AddWithValue("@Height", person.Height);
         command.Parameters.AddWithValue("@IsPregnant", person.IsPregnant ? 1 : 0);
-        command.Parameters.AddWithValue("@PregnancyDueDate", person.PregnancyDueDay.HasValue ? (object)person.PregnancyDueDay.Value : (object)DBNull.Value);
+        command.Parameters.AddWithValue("@PregnancyDueDay", person.PregnancyDueDay.HasValue ? (object)person.PregnancyDueDay.Value : (object)DBNull.Value);
         command.Parameters.AddWithValue("@PregnancyFatherId", person.PregnancyFatherId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@PregnancyMultiplier", person.PregnancyMultiplier);
         command.Parameters.AddWithValue("@DynastyId", person.DynastyId ?? (object)DBNull.Value);
@@ -353,14 +353,14 @@ public class DataAccessLayer
             if (city.Id <= 0)
             {
                 command.CommandText = @"
-                    INSERT INTO Cities (Name, CountryId, FoundedDate, Population, FounderId, Wealth)
-                    VALUES (@Name, @CountryId, @FoundedDate, @Population, @FounderId, @Wealth)
+                    INSERT INTO Cities (Name, CountryId, FoundedDay, Population, FounderId, Wealth)
+                    VALUES (@Name, @CountryId, @FoundedDay, @Population, @FounderId, @Wealth)
                 ";
             }
             else
             {
                 command.CommandText = @"
-                    UPDATE Cities SET Name=@Name, CountryId=@CountryId, FoundedDate=@FoundedDate,
+                    UPDATE Cities SET Name=@Name, CountryId=@CountryId, FoundedDay=@FoundedDay,
                         Population=@Population, FounderId=@FounderId, Wealth=@Wealth
                     WHERE Id=@Id
                 ";
@@ -369,7 +369,7 @@ public class DataAccessLayer
             
             command.Parameters.AddWithValue("@Name", city.Name);
             command.Parameters.AddWithValue("@CountryId", city.CountryId ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("@FoundedDate", city.FoundedDay);
+            command.Parameters.AddWithValue("@FoundedDay", city.FoundedDay);
             command.Parameters.AddWithValue("@Population", city.Population);
             command.Parameters.AddWithValue("@FounderId", city.FounderId ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@Wealth", city.Wealth);
@@ -395,14 +395,14 @@ public class DataAccessLayer
             if (country.Id <= 0)
             {
                 command.CommandText = @"
-                    INSERT INTO Countries (Name, FoundedDate, RulerId, CapitalCityId, Population, Wealth, MilitaryStrength, GovernmentType)
-                    VALUES (@Name, @FoundedDate, @RulerId, @CapitalCityId, @Population, @Wealth, @MilitaryStrength, @GovernmentType)
+                    INSERT INTO Countries (Name, FoundedDay, RulerId, CapitalCityId, Population, Wealth, MilitaryStrength, GovernmentType)
+                    VALUES (@Name, @FoundedDay, @RulerId, @CapitalCityId, @Population, @Wealth, @MilitaryStrength, @GovernmentType)
                 ";
             }
             else
             {
                 command.CommandText = @"
-                    UPDATE Countries SET Name=@Name, FoundedDate=@FoundedDate, RulerId=@RulerId,
+                    UPDATE Countries SET Name=@Name, FoundedDay=@FoundedDay, RulerId=@RulerId,
                         CapitalCityId=@CapitalCityId, Population=@Population, Wealth=@Wealth,
                         MilitaryStrength=@MilitaryStrength, GovernmentType=@GovernmentType
                     WHERE Id=@Id
@@ -411,7 +411,7 @@ public class DataAccessLayer
             }
             
             command.Parameters.AddWithValue("@Name", country.Name);
-            command.Parameters.AddWithValue("@FoundedDate", country.FoundedDay);
+            command.Parameters.AddWithValue("@FoundedDay", country.FoundedDay);
             command.Parameters.AddWithValue("@RulerId", country.RulerId ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@CapitalCityId", country.CapitalCityId ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@Population", country.Population);
@@ -440,14 +440,14 @@ public class DataAccessLayer
             if (religion.Id <= 0)
             {
                 command.CommandText = @"
-                    INSERT INTO Religions (Name, FoundedDate, FounderId, Followers, Beliefs, AllowsPolygamy)
-                    VALUES (@Name, @FoundedDate, @FounderId, @Followers, @Beliefs, @AllowsPolygamy)
+                    INSERT INTO Religions (Name, FoundedDay, FounderId, Followers, Beliefs, AllowsPolygamy)
+                    VALUES (@Name, @FoundedDay, @FounderId, @Followers, @Beliefs, @AllowsPolygamy)
                 ";
             }
             else
             {
                 command.CommandText = @"
-                    UPDATE Religions SET Name=@Name, FoundedDate=@FoundedDate, FounderId=@FounderId,
+                    UPDATE Religions SET Name=@Name, FoundedDay=@FoundedDay, FounderId=@FounderId,
                         Followers=@Followers, Beliefs=@Beliefs, AllowsPolygamy=@AllowsPolygamy
                     WHERE Id=@Id
                 ";
@@ -455,7 +455,7 @@ public class DataAccessLayer
             }
             
             command.Parameters.AddWithValue("@Name", religion.Name);
-            command.Parameters.AddWithValue("@FoundedDate", religion.FoundedDay);
+            command.Parameters.AddWithValue("@FoundedDay", religion.FoundedDay);
             command.Parameters.AddWithValue("@FounderId", religion.FounderId ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@Followers", religion.Followers);
             command.Parameters.AddWithValue("@Beliefs", religion.Beliefs);
@@ -514,12 +514,12 @@ public class DataAccessLayer
             {
                 var command = connection.CreateCommand();
                 command.CommandText = @"
-                    INSERT INTO Inventions (Name, Description, DiscoveredDate, InventorId, RequiredIntelligence, Category, HealthBonus, LifespanBonus)
-                    VALUES (@Name, @Description, @DiscoveredDate, @InventorId, @RequiredIntelligence, @Category, @HealthBonus, @LifespanBonus)
+                    INSERT INTO Inventions (Name, Description, DiscoveredDay, InventorId, RequiredIntelligence, Category, HealthBonus, LifespanBonus)
+                    VALUES (@Name, @Description, @DiscoveredDay, @InventorId, @RequiredIntelligence, @Category, @HealthBonus, @LifespanBonus)
                 ";
                 command.Parameters.AddWithValue("@Name", invention.Name);
                 command.Parameters.AddWithValue("@Description", invention.Description);
-                command.Parameters.AddWithValue("@DiscoveredDate", invention.DiscoveredDay);
+                command.Parameters.AddWithValue("@DiscoveredDay", invention.DiscoveredDay);
                 command.Parameters.AddWithValue("@InventorId", invention.InventorId ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@RequiredIntelligence", invention.RequiredIntelligence);
                 command.Parameters.AddWithValue("@Category", invention.Category);
@@ -545,14 +545,14 @@ public class DataAccessLayer
             if (war.Id <= 0)
             {
                 command.CommandText = @"
-                    INSERT INTO Wars (Name, StartDate, EndDate, AttackerCountryId, DefenderCountryId, WinnerCountryId, Casualties, IsActive)
-                    VALUES (@Name, @StartDate, @EndDate, @AttackerCountryId, @DefenderCountryId, @WinnerCountryId, @Casualties, @IsActive)
+                    INSERT INTO Wars (Name, StartDay, EndDay, AttackerCountryId, DefenderCountryId, WinnerCountryId, Casualties, IsActive)
+                    VALUES (@Name, @StartDay, @EndDay, @AttackerCountryId, @DefenderCountryId, @WinnerCountryId, @Casualties, @IsActive)
                 ";
             }
             else
             {
                 command.CommandText = @"
-                    UPDATE Wars SET Name=@Name, StartDate=@StartDate, EndDate=@EndDate,
+                    UPDATE Wars SET Name=@Name, StartDay=@StartDay, EndDay=@EndDay,
                         AttackerCountryId=@AttackerCountryId, DefenderCountryId=@DefenderCountryId,
                         WinnerCountryId=@WinnerCountryId, Casualties=@Casualties, IsActive=@IsActive
                     WHERE Id=@Id
@@ -561,8 +561,8 @@ public class DataAccessLayer
             }
             
             command.Parameters.AddWithValue("@Name", war.Name);
-            command.Parameters.AddWithValue("@StartDate", war.StartDay);
-            command.Parameters.AddWithValue("@EndDate", war.EndDay.HasValue ? (object)war.EndDay.Value : (object)DBNull.Value);
+            command.Parameters.AddWithValue("@StartDay", war.StartDay);
+            command.Parameters.AddWithValue("@EndDay", war.EndDay.HasValue ? (object)war.EndDay.Value : (object)DBNull.Value);
             command.Parameters.AddWithValue("@AttackerCountryId", war.AttackerCountryId);
             command.Parameters.AddWithValue("@DefenderCountryId", war.DefenderCountryId);
             command.Parameters.AddWithValue("@WinnerCountryId", war.WinnerCountryId ?? (object)DBNull.Value);
@@ -590,14 +590,14 @@ public class DataAccessLayer
             if (dynasty.Id <= 0)
             {
                 command.CommandText = @"
-                    INSERT INTO Dynasties (Name, FounderId, FoundedDate, CurrentRulerId, MemberCount)
-                    VALUES (@Name, @FounderId, @FoundedDate, @CurrentRulerId, @MemberCount)
+                    INSERT INTO Dynasties (Name, FounderId, FoundedDay, CurrentRulerId, MemberCount)
+                    VALUES (@Name, @FounderId, @FoundedDay, @CurrentRulerId, @MemberCount)
                 ";
             }
             else
             {
                 command.CommandText = @"
-                    UPDATE Dynasties SET Name=@Name, FounderId=@FounderId, FoundedDate=@FoundedDate,
+                    UPDATE Dynasties SET Name=@Name, FounderId=@FounderId, FoundedDay=@FoundedDay,
                         CurrentRulerId=@CurrentRulerId, MemberCount=@MemberCount
                     WHERE Id=@Id
                 ";
@@ -606,7 +606,7 @@ public class DataAccessLayer
             
             command.Parameters.AddWithValue("@Name", dynasty.Name);
             command.Parameters.AddWithValue("@FounderId", dynasty.FounderId);
-            command.Parameters.AddWithValue("@FoundedDate", dynasty.FoundedDay);
+            command.Parameters.AddWithValue("@FoundedDay", dynasty.FoundedDay);
             command.Parameters.AddWithValue("@CurrentRulerId", dynasty.CurrentRulerId ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@MemberCount", dynasty.MemberCount);
             command.ExecuteNonQuery();
