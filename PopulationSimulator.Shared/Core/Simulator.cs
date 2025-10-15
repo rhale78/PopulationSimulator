@@ -50,14 +50,17 @@ public class Simulator
     public void Initialize()
     {
         _dataAccess.InitializeDatabase();
+        _dataAccess.ClearDatabase(); // Clear any old data to avoid ID conflicts
+        
+        // Always seed jobs first (they use temp IDs and don't persist across restarts properly)
+        SeedJobs();
+        
+        // Seed initial Adam and Eve
         SeedInitialData();
     }
     
     private void SeedInitialData()
     {
-        // Seed jobs
-        SeedJobs();
-        
         // Set current date to year 20 so Adam and Eve start at age 20
         _currentDate = new DateTime(21, 1, 1);
         

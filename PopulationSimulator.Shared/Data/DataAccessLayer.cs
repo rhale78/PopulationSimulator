@@ -619,4 +619,25 @@ public class DataAccessLayer
             }
         }
     }
+    
+    public void ClearDatabase()
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        connection.Open();
+        
+        var command = connection.CreateCommand();
+        command.CommandText = @"
+            DELETE FROM People;
+            DELETE FROM Cities;
+            DELETE FROM Countries;
+            DELETE FROM Religions;
+            DELETE FROM Jobs;
+            DELETE FROM Inventions;
+            DELETE FROM Wars;
+            DELETE FROM Events;
+            DELETE FROM Dynasties;
+            DELETE FROM Laws;
+        ";
+        command.ExecuteNonQuery();
+    }
 }
