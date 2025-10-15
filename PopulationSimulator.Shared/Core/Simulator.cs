@@ -686,8 +686,11 @@ public class Simulator
                                 totalPeople < 500 ? 0.05 :
                                 0.02;
         
-        // Single pass through people to find eligible females
-        foreach (var female in livingPeople)
+        // Iterate over a snapshot to avoid collection modification issues
+        // (in case something invalidates the cache during iteration)
+        var peopleSnapshot = new List<Person>(livingPeople);
+        
+        foreach (var female in peopleSnapshot)
         {
             if (!CanHaveChildren(female)) continue;
             

@@ -163,6 +163,10 @@ public class DataAccessLayer
         ";
         command.ExecuteNonQuery();
         
+        // Migrate existing database from DateTime (TEXT) to int (INTEGER) columns
+        // Check if old column names exist and migrate if needed
+        MigrateDateTimeToInt(connection);
+        
         // Migrate existing Inventions table to add HealthBonus and LifespanBonus if they don't exist
         try
         {
@@ -639,5 +643,58 @@ public class DataAccessLayer
             DELETE FROM Laws;
         ";
         command.ExecuteNonQuery();
+    }
+    
+    private void MigrateDateTimeToInt(SqliteConnection connection)
+    {
+        // The simplest and safest way to migrate from old TEXT-based date columns
+        // to new INTEGER-based day columns is to drop and recreate tables.
+        // Since this is a simulation that can be restarted easily, we do this migration
+        // by detecting old schema and clearing data to force recreation.
+        
+        try
+        {
+            var checkCommand = connection.CreateCommand();
+            checkCommand.CommandText = "PRAGMA table_info(People)";
+            var reader = checkCommand.ExecuteReader();
+            bool hasOldDateColumns = false;
+            
+            while (reader.Read())
+            {
+                string columnName = reader.GetString(1);
+                // Check for old column names (BirthDate vs BirthDay)
+                if (columnName == "BirthDate" || columnName == "DeathDate" || 
+                    columnName == "MarriageDate" || columnName == "JobStartDate")
+                {
+                    hasOldDateColumns = true;
+                    break;
+                }
+            }
+            reader.Close();
+            
+            if (hasOldDateColumns)
+            {
+                // Old schema detected - drop all tables to force recreation with new schema
+                var dropCommand = connection.CreateCommand();
+                dropCommand.CommandText = @"
+                    DROP TABLE IF EXISTS People;
+                    DROP TABLE IF EXISTS Cities;
+                    DROP TABLE IF EXISTS Countries;
+                    DROP TABLE IF EXISTS Religions;
+                    DROP TABLE IF EXISTS Inventions;
+                    DROP TABLE IF EXISTS Wars;
+                    DROP TABLE IF EXISTS Events;
+                    DROP TABLE IF EXISTS Dynasties;
+                    DROP TABLE IF EXISTS Laws;
+                ";
+                dropCommand.ExecuteNonQuery();
+                
+                Console.WriteLine("Detected old database schema with DateTime columns. Database has been reset to use new integer-based date system.");
+            }
+        }
+        catch
+        {
+            // Ignore errors - table might not exist yet
+        }
     }
 }
