@@ -315,7 +315,9 @@ public class Simulator
         if (!_livingCacheValid)
         {
             _livingPeopleCache.Clear();
-            foreach (var person in _people)
+            // Use snapshot to avoid collection modification during iteration
+            var peopleSnapshot = new List<Person>(_people);
+            foreach (var person in peopleSnapshot)
             {
                 if (person.IsAlive)
                     _livingPeopleCache.Add(person);
@@ -723,8 +725,11 @@ public class Simulator
     private void ProcessBirths()
     {
         // Cache pregnancies due today (avoid creating list if no pregnancies)
+        // Use snapshot of _people to avoid collection modification during iteration
+        var peopleSnapshot = new List<Person>(_people);
         var duePregnancies = new List<Person>();
-        foreach (var person in _people)
+        
+        foreach (var person in peopleSnapshot)
         {
             if (person.IsPregnant && person.PregnancyDueDay.HasValue && 
                 person.PregnancyDueDay.Value <= _currentDay)
@@ -862,7 +867,9 @@ public class Simulator
     
     private void ProcessYearlyEvents()
     {
-        int population = _people.Count(p => p.IsAlive);
+        // Use cached living count to avoid iterating _people
+        var livingPeople = GetLivingPeople();
+        int population = livingPeople.Count;
         
         // Found cities
         if (population > 100 && _cities.Count < population / 100 && _random.NextDouble() < 0.3)
@@ -1188,14 +1195,16 @@ public class Simulator
     {
         try
         {
-            _dataAccess.SavePeople(_people);
-            _dataAccess.SaveCities(_cities);
-            _dataAccess.SaveCountries(_countries);
-            _dataAccess.SaveReligions(_religions);
-            _dataAccess.SaveInventions(_inventions);
-            _dataAccess.SaveWars(_wars);
-            _dataAccess.SaveDynasties(_dynasties);
-            _dataAccess.SaveEvents(_recentEvents);
+            // Create snapshots to avoid collection modification issues
+            // Database operations can modify IDs and trigger enumerations
+            _dataAccess.SavePeople(new List<Person>(_people));
+            _dataAccess.SaveCities(new List<City>(_cities));
+            _dataAccess.SaveCountries(new List<Country>(_countries));
+            _dataAccess.SaveReligions(new List<Religion>(_religions));
+            _dataAccess.SaveInventions(new List<Invention>(_inventions));
+            _dataAccess.SaveWars(new List<War>(_wars));
+            _dataAccess.SaveDynasties(new List<Dynasty>(_dynasties));
+            _dataAccess.SaveEvents(new List<Event>(_recentEvents));
         }
         catch (Exception ex)
         {
