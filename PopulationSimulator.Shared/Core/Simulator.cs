@@ -110,71 +110,71 @@ public class Simulator
     {
         var jobsData = new[]
         {
-            // Basic jobs (no requirements)
-            ("Farmer", 20, 40, 12, 10m, 1, 1.0, false, null),
-            ("Hunter", 30, 60, 14, 15m, 2, 1.5, false, null),
-            ("Gatherer", 20, 30, 12, 8m, 1, 0.8, false, null),
-            ("Fisherman", 25, 50, 14, 12m, 2, 1.2, false, null),
-            ("Shepherd", 20, 40, 12, 10m, 1, 0.9, false, null),
-            ("Builder", 30, 70, 16, 20m, 3, 1.3, false, null),
-            ("Servant", 15, 25, 12, 5m, 0, 0.9, false, null),
+            // Basic jobs (no requirements) - LOWERED REQUIREMENTS for realism
+            ("Farmer", 10, 20, 12, 10m, 1, 1.0, false, null),
+            ("Hunter", 15, 30, 14, 15m, 2, 1.5, false, null),
+            ("Gatherer", 10, 15, 12, 8m, 1, 0.8, false, null),
+            ("Fisherman", 12, 25, 14, 12m, 2, 1.2, false, null),
+            ("Shepherd", 10, 20, 12, 10m, 1, 0.9, false, null),
+            ("Builder", 15, 35, 16, 20m, 3, 1.3, false, null),
+            ("Servant", 8, 12, 12, 5m, 0, 0.9, false, null),
             
             // Crafts requiring inventions
-            ("Potter", 40, 30, 16, 18m, 3, 0.9, true, "Pottery"),
-            ("Weaver", 35, 30, 16, 16m, 3, 0.8, true, "Weaving"),
-            ("Tanner", 30, 40, 16, 15m, 2, 1.0, true, "Tanning"),
-            ("Glassmaker", 60, 40, 18, 35m, 5, 1.2, true, "Glassmaking"),
+            ("Potter", 20, 15, 16, 18m, 3, 0.9, true, "Pottery"),
+            ("Weaver", 18, 15, 16, 16m, 3, 0.8, true, "Weaving"),
+            ("Tanner", 15, 20, 16, 15m, 2, 1.0, true, "Tanning"),
+            ("Glassmaker", 30, 20, 18, 35m, 5, 1.2, true, "Glassmaking"),
             
             // Metallurgy jobs
-            ("Copper Smith", 50, 70, 18, 28m, 4, 1.4, true, "Copper Working"),
-            ("Bronze Smith", 55, 75, 18, 32m, 5, 1.5, true, "Bronze"),
-            ("Iron Smith", 60, 80, 18, 38m, 6, 1.6, true, "Iron Working"),
-            ("Blacksmith", 65, 80, 18, 42m, 6, 1.6, true, "Steel"),
-            ("Goldsmith", 70, 50, 20, 50m, 7, 1.0, true, "Gold Working"),
+            ("Copper Smith", 25, 35, 18, 28m, 4, 1.4, true, "Copper Working"),
+            ("Bronze Smith", 28, 38, 18, 32m, 5, 1.5, true, "Bronze"),
+            ("Iron Smith", 30, 40, 18, 38m, 6, 1.6, true, "Iron Working"),
+            ("Blacksmith", 32, 40, 18, 42m, 6, 1.6, true, "Steel"),
+            ("Goldsmith", 35, 25, 20, 50m, 7, 1.0, true, "Gold Working"),
             
             // Professional jobs
-            ("Merchant", 60, 20, 18, 35m, 5, 0.9, false, null),
-            ("Scribe", 80, 10, 20, 30m, 6, 0.6, true, "Writing"),
-            ("Priest", 70, 10, 20, 30m, 7, 0.7, false, null),
-            ("Healer", 75, 20, 20, 40m, 6, 0.8, true, "Herbal Medicine"),
-            ("Physician", 85, 20, 22, 55m, 8, 0.7, true, "Surgery"),
-            ("Scholar", 85, 10, 22, 35m, 7, 0.6, true, "Writing"),
-            ("Teacher", 75, 10, 20, 28m, 6, 0.6, true, "Writing"),
+            ("Merchant", 30, 10, 18, 35m, 5, 0.9, false, null),
+            ("Scribe", 40, 8, 20, 30m, 6, 0.6, true, "Writing"),
+            ("Priest", 35, 8, 20, 30m, 7, 0.7, false, null),
+            ("Healer", 38, 10, 20, 40m, 6, 0.8, true, "Herbal Medicine"),
+            ("Physician", 42, 10, 22, 55m, 8, 0.7, true, "Surgery"),
+            ("Scholar", 42, 8, 22, 35m, 7, 0.6, true, "Writing"),
+            ("Teacher", 38, 8, 20, 28m, 6, 0.6, true, "Writing"),
             
             // Engineering and Architecture
-            ("Architect", 80, 40, 22, 60m, 8, 0.8, true, "Architecture"),
-            ("Engineer", 85, 50, 22, 65m, 8, 1.0, true, "Mathematics"),
-            ("Mason", 40, 75, 16, 22m, 3, 1.4, true, "Brick Making"),
+            ("Architect", 40, 20, 22, 60m, 8, 0.8, true, "Architecture"),
+            ("Engineer", 42, 25, 22, 65m, 8, 1.0, true, "Mathematics"),
+            ("Mason", 20, 38, 16, 22m, 3, 1.4, true, "Brick Making"),
             
             // Arts
-            ("Artist", 60, 20, 18, 25m, 4, 0.7, true, "Painting"),
-            ("Sculptor", 65, 40, 18, 28m, 5, 0.8, true, "Sculpture"),
-            ("Musician", 50, 20, 16, 20m, 4, 0.7, true, "Music"),
-            ("Poet", 70, 10, 18, 22m, 5, 0.6, true, "Poetry"),
+            ("Artist", 30, 10, 18, 25m, 4, 0.7, true, "Painting"),
+            ("Sculptor", 32, 20, 18, 28m, 5, 0.8, true, "Sculpture"),
+            ("Musician", 25, 10, 16, 20m, 4, 0.7, true, "Music"),
+            ("Poet", 35, 8, 18, 22m, 5, 0.6, true, "Poetry"),
             
             // Labor
-            ("Miner", 25, 85, 16, 25m, 3, 2.5, false, null),
-            ("Quarryman", 25, 80, 16, 22m, 2, 2.3, false, null),
-            ("Laborer", 15, 60, 14, 8m, 1, 1.5, false, null),
+            ("Miner", 12, 42, 16, 25m, 3, 2.5, false, null),
+            ("Quarryman", 12, 40, 16, 22m, 2, 2.3, false, null),
+            ("Laborer", 8, 30, 14, 8m, 1, 1.5, false, null),
             
             // Food production
-            ("Baker", 30, 30, 14, 12m, 2, 0.8, true, "Bread Baking"),
-            ("Brewer", 35, 30, 16, 15m, 2, 0.8, true, "Beer Brewing"),
-            ("Cook", 30, 30, 14, 12m, 2, 0.8, false, null),
-            ("Butcher", 25, 50, 14, 14m, 2, 1.0, false, null),
+            ("Baker", 15, 15, 14, 12m, 2, 0.8, true, "Bread Baking"),
+            ("Brewer", 18, 15, 16, 15m, 2, 0.8, true, "Beer Brewing"),
+            ("Cook", 15, 15, 14, 12m, 2, 0.8, false, null),
+            ("Butcher", 12, 25, 14, 14m, 2, 1.0, false, null),
             
             // Transportation
-            ("Carter", 25, 50, 16, 16m, 2, 1.1, true, "Cart"),
-            ("Sailor", 35, 60, 16, 20m, 3, 1.8, true, "Ship"),
-            ("Charioteer", 40, 65, 18, 25m, 4, 1.5, true, "Chariot"),
+            ("Carter", 12, 25, 16, 16m, 2, 1.1, true, "Cart"),
+            ("Sailor", 18, 30, 16, 20m, 3, 1.8, true, "Ship"),
+            ("Charioteer", 20, 32, 18, 25m, 4, 1.5, true, "Chariot"),
             
             // Military (only available after wars start - handled separately)
-            ("Warrior", 40, 80, 16, 20m, 5, 3.0, false, null), // Will be restricted by logic
-            ("Guard", 35, 70, 18, 18m, 4, 1.8, false, null),
-            ("Archer", 45, 60, 16, 22m, 5, 2.0, true, "Bow and Arrow"),
+            ("Warrior", 20, 40, 16, 20m, 5, 3.0, false, null), // Will be restricted by logic
+            ("Guard", 18, 35, 18, 18m, 4, 1.8, false, null),
+            ("Archer", 22, 30, 16, 22m, 5, 2.0, true, "Bow and Arrow"),
             
             // Leadership
-            ("Leader", 75, 50, 25, 100m, 10, 1.0, false, null)
+            ("Leader", 38, 25, 25, 100m, 10, 1.0, false, null)
         };
         
         foreach (var (name, intel, str, age, salary, status, risk, requiresInv, invName) in jobsData)
@@ -443,13 +443,6 @@ public class Simulator
     
     private void AssignJobs()
     {
-        // Ensure we have jobs to assign
-        if (_jobs.Count == 0)
-        {
-            Console.WriteLine("WARNING: No jobs available to assign!");
-            return;
-        }
-        
         // Get list of people who need jobs (alive, old enough, no current job)
         var peopleNeedingJobs = _people
             .Where(p => p.IsAlive && p.GetAge(_currentDate) >= 12 && !p.JobId.HasValue)
@@ -1145,46 +1138,24 @@ public class Simulator
     {
         var livingPeople = GetLivingPeople();
         
-        // Debug: Log job dictionary state
-        if (_jobsById.Count == 0)
-        {
-            Console.WriteLine("WARNING: _jobsById dictionary is empty!");
-        }
-        
         // Group people by their job
         var jobGroups = new Dictionary<string, int>();
         
         foreach (var person in livingPeople)
         {
-            string jobName;
-            
-            if (!person.JobId.HasValue)
-            {
-                jobName = "Unemployed";
-            }
-            else if (_jobsById.ContainsKey(person.JobId.Value))
-            {
-                jobName = _jobsById[person.JobId.Value].Name;
-            }
-            else
-            {
-                // This should not happen - log it
-                Console.WriteLine($"WARNING: Person {person.FirstName} {person.LastName} has JobId {person.JobId.Value} which doesn't exist in _jobsById!");
-                jobName = "Unknown";
-            }
+            string jobName = !person.JobId.HasValue ? "Unemployed" 
+                : (_jobsById.ContainsKey(person.JobId.Value) ? _jobsById[person.JobId.Value].Name : "Unknown");
             
             if (!jobGroups.ContainsKey(jobName))
-            {
                 jobGroups[jobName] = 0;
-            }
             jobGroups[jobName]++;
         }
         
-        // Convert to list and return top 5
+        // Convert to list and return top 10
         return jobGroups
             .Select(kvp => new JobStatistic { JobName = kvp.Key, Count = kvp.Value })
             .OrderByDescending(j => j.Count)
-            .Take(10) // Show top 10 to see more variety
+            .Take(10)
             .ToList();
     }
     
