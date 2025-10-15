@@ -196,7 +196,15 @@ public class Simulator
             _jobsById[job.Id] = job;
         }
         
+        // Save jobs to database (this updates their IDs to database auto-increment values)
         _dataAccess.SaveJobs(_jobs);
+        
+        // Rebuild the _jobsById dictionary with the new database IDs
+        _jobsById.Clear();
+        foreach (var job in _jobs)
+        {
+            _jobsById[job.Id] = job;
+        }
     }
     
     private Person CreatePerson(string firstName, string lastName, string gender, long? fatherId, long? motherId)
@@ -435,11 +443,26 @@ public class Simulator
     
     private void AssignJobs()
     {
-        // Track which inventions have been discovered (use HashSet for O(1) lookup)
-        var discoveredInventionNames = _inventions.Select(i => i.Name).ToHashSet();
+        // Ensure we have jobs to assign
+        if (_jobs.Count == 0)
+        {
+            Console.WriteLine("WARNING: No jobs available to assign!");
+            return;
+        }
         
-        // Job-invention mapping for quick lookup
-        var jobInventionMap = new Dictionary<string, string>
+        // Get list of people who need jobs (alive, old enough, no current job)
+        var peopleNeedingJobs = _people
+            .Where(p => p.IsAlive && p.GetAge(_currentDate) >= 12 && !p.JobId.HasValue)
+            .ToList();
+        
+        if (peopleNeedingJobs.Count == 0) return;
+        
+        // Build set of discovered inventions for quick lookup
+        var discoveredInventions = _inventions.Select(i => i.Name).ToHashSet();
+        bool hasActiveWars = _wars.Count > 0;
+        
+        // Map job names to required inventions
+        var jobInventionRequirements = new Dictionary<string, string>
         {
             { "Potter", "Pottery" },
             { "Weaver", "Weaving" },
@@ -470,61 +493,62 @@ public class Simulator
             { "Archer", "Bow and Arrow" }
         };
         
-        bool hasWars = _wars.Count > 0;
-        
-        // Single pass through people
-        foreach (var person in _people)
+        // Assign jobs to each eligible person
+        foreach (var person in peopleNeedingJobs)
         {
-            if (!person.IsEligibleForJob(_currentDate)) continue;
+            Job? assignedJob = null;
+            int bestFitScore = int.MinValue;
             
-            int personAge = person.GetAge(_currentDate);
-            int personIntelligence = person.Intelligence;
-            int personStrength = person.Strength;
-            
-            // Find best suitable job
-            Job? bestJob = null;
-            int bestScore = -1;
-            
+            // Find the best job match for this person
             foreach (var job in _jobs)
             {
-                // Check basic requirements
-                if (personIntelligence < job.MinIntelligence) continue;
-                if (personStrength < job.MinStrength) continue;
-                if (personAge < job.MinAge) continue;
+                // Check age requirement
+                if (person.GetAge(_currentDate) < job.MinAge) continue;
                 
-                // Check if job requires an invention
+                // Check intelligence requirement
+                if (person.Intelligence < job.MinIntelligence) continue;
+                
+                // Check strength requirement
+                if (person.Strength < job.MinStrength) continue;
+                
+                // Check if job requires an invention that hasn't been discovered
                 if (job.RequiresInvention)
                 {
-                    if (jobInventionMap.TryGetValue(job.Name, out var requiredInvention))
+                    if (jobInventionRequirements.TryGetValue(job.Name, out var requiredInvention))
                     {
-                        if (!discoveredInventionNames.Contains(requiredInvention))
+                        if (!discoveredInventions.Contains(requiredInvention))
                             continue;
                     }
                 }
                 
-                // Restrict military jobs until wars exist
-                if ((job.Name == "Warrior" || job.Name == "Archer") && !hasWars)
+                // Military jobs require active wars
+                if ((job.Name == "Warrior" || job.Name == "Guard" || job.Name == "Archer") && !hasActiveWars)
                     continue;
                 
-                // Calculate job fit score
-                int score = (personIntelligence - job.MinIntelligence) + 
-                           (personStrength - job.MinStrength);
+                // Calculate fit score (how well person exceeds requirements)
+                int fitScore = (person.Intelligence - job.MinIntelligence) + 
+                              (person.Strength - job.MinStrength);
                 
-                if (score > bestScore)
+                // This person qualifies and has a better fit than previous options
+                if (fitScore > bestFitScore)
                 {
-                    bestScore = score;
-                    bestJob = job;
+                    bestFitScore = fitScore;
+                    assignedJob = job;
                 }
             }
             
-            if (bestJob != null)
+            // Assign the best job found
+            if (assignedJob != null)
             {
-                person.JobId = bestJob.Id;
+                person.JobId = assignedJob.Id;
                 person.JobStartDate = _currentDate;
-                person.SocialStatus += bestJob.SocialStatusBonus;
+                person.SocialStatus += assignedJob.SocialStatusBonus;
                 
-                if (_random.Next(10) == 0) // Log 10% of job assignments
-                    LogEvent("Job", $"{person.FirstName} {person.LastName} became a {bestJob.Name}", person.Id);
+                // Log some job assignments (10% to avoid spam)
+                if (_random.Next(100) < 10)
+                {
+                    LogEvent("Job", $"{person.FirstName} {person.LastName} became a {assignedJob.Name}", person.Id);
+                }
             }
         }
     }
@@ -1121,31 +1145,47 @@ public class Simulator
     {
         var livingPeople = GetLivingPeople();
         
-        // Get people with jobs
-        var withJobs = livingPeople
-            .Where(p => p.JobId.HasValue)
-            .GroupBy(p => p.JobId!.Value)
-            .Select(g => new JobStatistic
-            {
-                JobName = _jobsById.ContainsKey(g.Key) ? _jobsById[g.Key].Name : "Unknown",
-                Count = g.Count()
-            })
-            .OrderByDescending(j => j.Count)
-            .Take(5)
-            .ToList();
-        
-        // Add people without jobs as "Unemployed"
-        var withoutJobs = livingPeople.Count(p => !p.JobId.HasValue);
-        if (withoutJobs > 0)
+        // Debug: Log job dictionary state
+        if (_jobsById.Count == 0)
         {
-            withJobs.Add(new JobStatistic
-            {
-                JobName = "Unemployed",
-                Count = withoutJobs
-            });
+            Console.WriteLine("WARNING: _jobsById dictionary is empty!");
         }
         
-        return withJobs.OrderByDescending(j => j.Count).Take(5).ToList();
+        // Group people by their job
+        var jobGroups = new Dictionary<string, int>();
+        
+        foreach (var person in livingPeople)
+        {
+            string jobName;
+            
+            if (!person.JobId.HasValue)
+            {
+                jobName = "Unemployed";
+            }
+            else if (_jobsById.ContainsKey(person.JobId.Value))
+            {
+                jobName = _jobsById[person.JobId.Value].Name;
+            }
+            else
+            {
+                // This should not happen - log it
+                Console.WriteLine($"WARNING: Person {person.FirstName} {person.LastName} has JobId {person.JobId.Value} which doesn't exist in _jobsById!");
+                jobName = "Unknown";
+            }
+            
+            if (!jobGroups.ContainsKey(jobName))
+            {
+                jobGroups[jobName] = 0;
+            }
+            jobGroups[jobName]++;
+        }
+        
+        // Convert to list and return top 5
+        return jobGroups
+            .Select(kvp => new JobStatistic { JobName = kvp.Key, Count = kvp.Value })
+            .OrderByDescending(j => j.Count)
+            .Take(10) // Show top 10 to see more variety
+            .ToList();
     }
     
     private List<FamilyTreeNode> GetActiveFamilyTrees()
