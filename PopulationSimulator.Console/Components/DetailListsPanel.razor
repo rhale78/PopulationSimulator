@@ -1,0 +1,83 @@
+@namespace PopulationSimulator.Components
+
+@using PopulationSimulator.Core
+@using RazorConsole.Components
+@using Spectre.Console
+
+<Panel Title="CIVILIZATION DETAILS" 
+       BorderColor="@Color.Yellow" 
+       Border="BoxBorder.Double"
+       Expand="true"
+       Height="18">
+    <Rows>
+        @if (Stats.Cities.Any() || Stats.Countries.Any() || Stats.Religions.Any() || Stats.Inventions.Any())
+        {
+            @if (Stats.Cities.Any())
+            {
+                <Markup Content="[bold cyan1]Cities:[/]" />
+                @foreach (var city in Stats.Cities.Take(5))
+                {
+                    var line = $"  • {city.Name} (Pop: {city.Population}, Est: {city.Year})";
+                    if (line.Length > MaxWidth)
+                    {
+                        line = line.Substring(0, MaxWidth - 3) + "...";
+                    }
+                    <Markup Content="@line" Foreground="@Color.Cyan1" />
+                }
+            }
+            
+            @if (Stats.Countries.Any())
+            {
+                <Markup Content="[bold magenta1]Countries:[/]" />
+                @foreach (var country in Stats.Countries.Take(3))
+                {
+                    var line = $"  • {country.Name} (Pop: {country.Population}, Est: {country.Year})";
+                    if (line.Length > MaxWidth)
+                    {
+                        line = line.Substring(0, MaxWidth - 3) + "...";
+                    }
+                    <Markup Content="@line" Foreground="@Color.Magenta1" />
+                }
+            }
+            
+            @if (Stats.Religions.Any())
+            {
+                <Markup Content="[bold blue]Religions:[/]" />
+                @foreach (var religion in Stats.Religions.Take(3))
+                {
+                    var line = $"  • {religion.Name} ({religion.Followers} followers, Est: {religion.Year})";
+                    if (line.Length > MaxWidth)
+                    {
+                        line = line.Substring(0, MaxWidth - 3) + "...";
+                    }
+                    <Markup Content="@line" Foreground="@Color.Blue" />
+                }
+            }
+            
+            @if (Stats.Inventions.Any())
+            {
+                <Markup Content="[bold yellow]Recent Inventions:[/]" />
+                @foreach (var invention in Stats.Inventions.TakeLast(5))
+                {
+                    var line = $"  • {invention.Name} ({invention.Category}, {invention.Year})";
+                    if (line.Length > MaxWidth)
+                    {
+                        line = line.Substring(0, MaxWidth - 3) + "...";
+                    }
+                    <Markup Content="@line" Foreground="@Color.Yellow" />
+                }
+            }
+        }
+        else
+        {
+            <Markup Content="No civilization developments yet..." Foreground="@Color.Grey" />
+        }
+    </Rows>
+</Panel>
+
+@code {
+    [Parameter]
+    public SimulationStats Stats { get; set; } = new();
+    
+    private const int MaxWidth = 75;
+}

@@ -16,7 +16,7 @@
            Border="BoxBorder.Double"
            Expand="true">
         <Columns>
-            <Markup Content="@($"Current Date: Year {_stats.CurrentDate.Year}, Day {_stats.CurrentDate.DayOfYear}")" 
+            <Markup Content="@($"Current Date: Year {_stats.CurrentYear}, Day {_stats.CurrentDayOfYear}")" 
                     Foreground="@Color.Yellow" />
             <Markup Content="@($"Generation: {_stats.GenerationNumber}")" 
                     Foreground="@Color.Yellow" />
@@ -34,12 +34,80 @@
 
     <CivilizationPanel Stats="@_stats" />
 
+    <DetailListsPanel Stats="@_stats" />
+
     @if (_stats.FamilyTrees.Any())
     {
         <FamilyTreePanel FamilyTree="@_stats.FamilyTrees.First()" />
     }
 
     <RecentEventsPanel Events="@_stats.RecentEvents" />
+
+    <Panel Title="RECENT BIRTHS/DEATHS/MARRIAGES" 
+           BorderColor="@Color.Grey" 
+           Border="BoxBorder.Rounded"
+           Expand="true"
+           Height="12">
+        <Columns>
+            <Panel Title="Births" BorderColor="@Color.Green" Border="BoxBorder.Rounded">
+                <Rows>
+                    @{
+                        var births = _stats.RecentEvents.Where(e => e.EventType == "Birth").TakeLast(3).ToList();
+                        if (!births.Any())
+                        {
+                            <Markup Content="No recent births" Foreground="@Color.Grey" />
+                        }
+                        else
+                        {
+                            @foreach (var evt in births)
+                            {
+                                var text = evt.Description.Length > 30 ? evt.Description.Substring(0, 27) + "..." : evt.Description;
+                                <Markup Content="@text" Foreground="@Color.Green" />
+                            }
+                        }
+                    }
+                </Rows>
+            </Panel>
+            <Panel Title="Deaths" BorderColor="@Color.Red" Border="BoxBorder.Rounded">
+                <Rows>
+                    @{
+                        var deaths = _stats.RecentEvents.Where(e => e.EventType == "Death").TakeLast(3).ToList();
+                        if (!deaths.Any())
+                        {
+                            <Markup Content="No recent deaths" Foreground="@Color.Grey" />
+                        }
+                        else
+                        {
+                            @foreach (var evt in deaths)
+                            {
+                                var text = evt.Description.Length > 30 ? evt.Description.Substring(0, 27) + "..." : evt.Description;
+                                <Markup Content="@text" Foreground="@Color.Red" />
+                            }
+                        }
+                    }
+                </Rows>
+            </Panel>
+            <Panel Title="Marriages" BorderColor="@Color.Yellow" Border="BoxBorder.Rounded">
+                <Rows>
+                    @{
+                        var marriages = _stats.RecentEvents.Where(e => e.EventType == "Marriage").TakeLast(3).ToList();
+                        if (!marriages.Any())
+                        {
+                            <Markup Content="No marriages yet" Foreground="@Color.Grey" />
+                        }
+                        else
+                        {
+                            @foreach (var evt in marriages)
+                            {
+                                var text = evt.Description.Length > 30 ? evt.Description.Substring(0, 27) + "..." : evt.Description;
+                                <Markup Content="@text" Foreground="@Color.Yellow" />
+                            }
+                        }
+                    }
+                </Rows>
+            </Panel>
+        </Columns>
+    </Panel>
 
     <Panel Title="CONTROLS" 
            BorderColor="@Color.Grey" 
@@ -55,7 +123,7 @@
 </Rows>
 
 @code {
-    private SimulationStats _stats = new();
+    private SimulationStats _stats = new() { CurrentYear = 1, CurrentDayOfYear = 1 };
     private int _simulationSpeed = 1;
 
     protected override void OnInitialized()

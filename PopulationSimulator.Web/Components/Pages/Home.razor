@@ -43,7 +43,7 @@
                 <div class="card-body">
                     <div class="row text-center">
                         <div class="col-md-3">
-                            <strong>Current Date:</strong> Year @_stats.CurrentDate.Year, Day @_stats.CurrentDate.DayOfYear
+                            <strong>Current Date:</strong> Year @_stats.CurrentYear, Day @_stats.CurrentDayOfYear
                         </div>
                         <div class="col-md-3">
                             <strong>Generation:</strong> @_stats.GenerationNumber
@@ -212,7 +212,7 @@
                             @foreach (var evt in recentBirths)
                             {
                                 <li class="mb-2">
-                                    <small class="text-muted">Year @evt.Date.Year:</small><br/>
+                                    <small class="text-muted">Year @DayToYear(evt.Day):</small><br/>
                                     @evt.Description
                                 </li>
                             }
@@ -237,7 +237,7 @@
                                 @foreach (var evt in recentMarriages)
                                 {
                                     <li class="mb-2">
-                                        <small class="text-muted">Year @evt.Date.Year:</small><br/>
+                                        <small class="text-muted">Year @DayToYear(evt.Day):</small><br/>
                                         @evt.Description
                                     </li>
                                 }
@@ -263,7 +263,7 @@
                                 @foreach (var evt in recentDeaths)
                                 {
                                     <li class="mb-2">
-                                        <small class="text-muted">Year @evt.Date.Year:</small><br/>
+                                        <small class="text-muted">Year @DayToYear(evt.Day):</small><br/>
                                         @evt.Description
                                     </li>
                                 }
@@ -290,7 +290,7 @@
                             {
                                 <li class="mb-2">
                                     <span class="badge @GetEventBadgeClass(evt.EventType)">@evt.EventType</span>
-                                    <small class="text-muted">Year @evt.Date.Year:</small>
+                                    <small class="text-muted">Year @DayToYear(evt.Day):</small>
                                     @evt.Description
                                 </li>
                             }
@@ -307,7 +307,7 @@
 </div>
 
 @code {
-    private SimulationStats _stats = new();
+    private SimulationStats _stats = new() { CurrentYear = 1, CurrentDayOfYear = 1 };
     private int _simulationSpeed = 1;
 
     protected override void OnInitialized()
@@ -334,7 +334,7 @@
 
     private void HandleSimulationRestarted()
     {
-        _stats = new SimulationStats();
+        _stats = new SimulationStats() { CurrentYear = 1, CurrentDayOfYear = 1 };
         _simulationSpeed = 1;
         InvokeAsync(StateHasChanged);
     }
@@ -387,6 +387,8 @@
             _ => "bg-secondary"
         };
     }
+    
+    private int DayToYear(int day) => (day / 365) + 1;
 
     public void Dispose()
     {

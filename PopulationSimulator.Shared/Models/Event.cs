@@ -3,7 +3,7 @@ namespace PopulationSimulator.Models;
 public class Event
 {
     public long Id { get; set; }
-    public DateTime Date { get; set; }
+    public int Day { get; set; } // Days since simulation start
     public string EventType { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public long? PersonId { get; set; }

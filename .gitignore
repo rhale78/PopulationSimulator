@@ -71,3 +71,4 @@ nunit-*.xml
 /.vs/PopulationSimulator/copilot-chat/bd2c0eb4/sessions
 /.vs/PopulationSimulator/FileContentIndex
 /.vs
+/PopulationSimulator.Web/PopulationSimulator.Web.csproj.user
