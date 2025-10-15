@@ -420,7 +420,7 @@ public class Simulator
         }
 
         // Calculate total lifespan bonus from all inventions
-        int lifespanBonus = _inventions.Sum(i => i.LifespanBonus);
+        //int lifespanBonus = _inventions.Sum(i => i.LifespanBonus);
         int effectiveAge = Math.Max(0, age - lifespanBonus);
 
         // Base death chance per day - significantly reduced for young people
@@ -1117,9 +1117,11 @@ public class Simulator
             }
         }
         
+        lifespanBonus = _inventions.Sum(i => i.LifespanBonus);
+
         LogEvent("Invention", $"{inventor.FirstName} {inventor.LastName} discovered {invention.Name}", inventor.Id);
     }
-    
+    private int lifespanBonus;// = _inventions.Sum(i => i.LifespanBonus);
     private void StartWar()
     {
         if (_countries.Count < 2) return;
@@ -1213,6 +1215,7 @@ public class Simulator
             
             foreach (var person in livingPeople)
             {
+                if (person is null) continue;
                 int age = person.GetAge(_currentDate);
                 
                 if (person.Gender == "Male")
@@ -1334,6 +1337,7 @@ public class Simulator
         
         foreach (var person in livingPeople)
         {
+            if (person is null) continue;
             string jobName = !person.JobId.HasValue ? "Unemployed" 
                 : (_jobsById.ContainsKey(person.JobId.Value) ? _jobsById[person.JobId.Value].Name : "Unknown");
             
