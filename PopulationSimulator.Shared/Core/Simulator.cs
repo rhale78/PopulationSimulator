@@ -14,6 +14,7 @@ public class Simulator
     private readonly Dictionary<long, Person> _peopleById = new();
     private readonly Dictionary<long, Person> _deadPeopleById = new(); // Track dead people for name lookup
     private readonly List<Person> _livingPeopleCache = new(); // Cache of living people for performance
+    private readonly Dictionary<long, List<Person>> _childrenByParentId = new(); // O(1) lookup for children by parent ID
     private readonly List<City> _cities = new();
     private readonly Dictionary<long, City> _citiesById = new();
     private readonly List<Country> _countries = new();
@@ -280,6 +281,29 @@ public class Simulator
         _people.Add(person);
         _peopleById[person.Id] = person;
         _livingCacheValid = false; // Invalidate cache when adding person
+        
+        // Maintain children lookup for O(1) access
+        if (person.FatherId.HasValue)
+        {
+            if (!_childrenByParentId.ContainsKey(person.FatherId.Value))
+                _childrenByParentId[person.FatherId.Value] = new List<Person>();
+            _childrenByParentId[person.FatherId.Value].Add(person);
+        }
+        
+        if (person.MotherId.HasValue)
+        {
+            if (!_childrenByParentId.ContainsKey(person.MotherId.Value))
+                _childrenByParentId[person.MotherId.Value] = new List<Person>();
+            _childrenByParentId[person.MotherId.Value].Add(person);
+        }
+    }
+    
+    private List<Person> GetChildrenOfPerson(long personId)
+    {
+        // O(1) lookup instead of LINQ query
+        if (_childrenByParentId.ContainsKey(personId))
+            return _childrenByParentId[personId];
+        return new List<Person>();
     }
     
     private List<Person> GetLivingPeople()
@@ -424,17 +448,26 @@ public class Simulator
         
         var country = _countriesById[deadRuler.CountryId.Value];
         
-        // Find oldest living child
-        var children = _people.Where(p => 
-            p.IsAlive && 
-            (p.FatherId == deadRuler.Id || p.MotherId == deadRuler.Id) &&
-            p.GetAge(_currentDate) >= 18)
-            .OrderByDescending(p => p.GetAge(_currentDate))
-            .ToList();
+        // Find oldest living child - using O(1) lookup instead of LINQ
+        var children = GetChildrenOfPerson(deadRuler.Id);
+        Person? heir = null;
+        int oldestAge = 0;
         
-        if (children.Any())
+        foreach (var child in children)
         {
-            var heir = children.First();
+            if (!child.IsAlive)
+                continue;
+                
+            int age = child.GetAge(_currentDate);
+            if (age >= 18 && age > oldestAge)
+            {
+                oldestAge = age;
+                heir = child;
+            }
+        }
+        
+        if (heir != null)
+        {
             heir.IsRuler = true;
             country.RulerId = heir.Id;
             
@@ -857,9 +890,19 @@ public class Simulator
     
     private void FoundCity()
     {
-        var founder = _people.Where(p => p.IsAlive && p.GetAge(_currentDate) >= 25)
-            .OrderByDescending(p => p.Leadership)
-            .FirstOrDefault();
+        // Find best founder without LINQ - iterate through living people cache
+        var livingPeople = GetLivingPeople();
+        Person? founder = null;
+        int bestLeadership = 0;
+        
+        foreach (var person in livingPeople)
+        {
+            if (person.GetAge(_currentDate) >= 25 && person.Leadership > bestLeadership)
+            {
+                bestLeadership = person.Leadership;
+                founder = person;
+            }
+        }
         
         if (founder == null) return;
         
@@ -876,12 +919,17 @@ public class Simulator
         _cities.Add(city);
         _citiesById[city.Id] = city;
         
-        // Assign some people to the city
-        var nearbyPeople = _people.Where(p => p.IsAlive && !p.CityId.HasValue).Take(20).ToList();
-        foreach (var person in nearbyPeople)
+        // Assign some people to the city - take first 20 without city
+        int assignedCount = 0;
+        foreach (var person in livingPeople)
         {
-            person.CityId = city.Id;
-            city.Population++;
+            if (!person.CityId.HasValue)
+            {
+                person.CityId = city.Id;
+                city.Population++;
+                assignedCount++;
+                if (assignedCount >= 20) break;
+            }
         }
         
         LogEvent("City", $"The city of {city.Name} was founded by {founder.FirstName} {founder.LastName}", founder.Id, city.Id);
@@ -889,12 +937,38 @@ public class Simulator
     
     private void FoundCountry()
     {
-        var city = _cities.Where(c => !c.CountryId.HasValue).OrderByDescending(c => c.Population).FirstOrDefault();
-        if (city == null) return;
+        // Find best city without LINQ
+        City? bestCity = null;
+        int bestPopulation = 0;
         
-        var ruler = _people.Where(p => p.IsAlive && p.CityId == city.Id && p.GetAge(_currentDate) >= 25)
-            .OrderByDescending(p => p.Leadership + p.Charisma)
-            .FirstOrDefault();
+        foreach (var city in _cities)
+        {
+            if (!city.CountryId.HasValue && city.Population > bestPopulation)
+            {
+                bestPopulation = city.Population;
+                bestCity = city;
+            }
+        }
+        
+        if (bestCity == null) return;
+        
+        // Find best ruler in that city without LINQ
+        var livingPeople = GetLivingPeople();
+        Person? ruler = null;
+        int bestScore = 0;
+        
+        foreach (var person in livingPeople)
+        {
+            if (person.CityId == bestCity.Id && person.GetAge(_currentDate) >= 25)
+            {
+                int score = person.Leadership + person.Charisma;
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    ruler = person;
+                }
+            }
+        }
         
         if (ruler == null) return;
         
@@ -904,10 +978,10 @@ public class Simulator
             Name = _nameGenerator.GenerateCountryName(),
             FoundedDate = _currentDate,
             RulerId = ruler.Id,
-            CapitalCityId = city.Id,
-            Population = city.Population,
+            CapitalCityId = bestCity.Id,
+            Population = bestCity.Population,
             Wealth = 0,
-            MilitaryStrength = city.Population / 10
+            MilitaryStrength = bestCity.Population / 10
         };
         
         _countries.Add(country);
@@ -915,7 +989,7 @@ public class Simulator
         
         ruler.IsRuler = true;
         ruler.CountryId = country.Id;
-        city.CountryId = country.Id;
+        bestCity.CountryId = country.Id;
         
         // Create dynasty
         var dynasty = new Dynasty
@@ -937,9 +1011,23 @@ public class Simulator
     
     private void FoundReligion()
     {
-        var founder = _people.Where(p => p.IsAlive && p.Intelligence > 70 && p.Charisma > 60)
-            .OrderByDescending(p => p.Intelligence + p.Charisma + p.Wisdom)
-            .FirstOrDefault();
+        // Find best founder without LINQ
+        var livingPeople = GetLivingPeople();
+        Person? founder = null;
+        int bestScore = 0;
+        
+        foreach (var person in livingPeople)
+        {
+            if (person.Intelligence > 70 && person.Charisma > 60)
+            {
+                int score = person.Intelligence + person.Charisma + person.Wisdom;
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    founder = person;
+                }
+            }
+        }
         
         if (founder == null) return;
         
@@ -964,19 +1052,43 @@ public class Simulator
     
     private void DiscoverInvention()
     {
-        var inventor = _people.Where(p => p.IsAlive && p.Intelligence > 75)
-            .OrderByDescending(p => p.Intelligence + p.Creativity)
-            .FirstOrDefault();
+        // Find best inventor without LINQ
+        var livingPeople = GetLivingPeople();
+        Person? inventor = null;
+        int bestScore = 0;
+        
+        foreach (var person in livingPeople)
+        {
+            if (person.Intelligence > 75)
+            {
+                int score = person.Intelligence + person.Creativity;
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    inventor = person;
+                }
+            }
+        }
         
         if (inventor == null) return;
         
-        // Get inventions that haven't been discovered yet
-        var discoveredNames = _inventions.Select(i => i.Name).ToHashSet();
-        var availableInventions = NameGenerator.InventionData
-            .Where(inv => !discoveredNames.Contains(inv.Name) && inventor.Intelligence >= inv.RequiredIntel)
-            .ToList();
+        // Get inventions that haven't been discovered yet - avoid LINQ on large array
+        var discoveredNames = new HashSet<string>();
+        foreach (var inv in _inventions)
+        {
+            discoveredNames.Add(inv.Name);
+        }
         
-        if (!availableInventions.Any()) return;
+        var availableInventions = new List<(string Name, string Category, int RequiredIntel, int HealthBonus, int LifespanBonus, string Description)>();
+        foreach (var inv in NameGenerator.InventionData)
+        {
+            if (!discoveredNames.Contains(inv.Name) && inventor.Intelligence >= inv.RequiredIntel)
+            {
+                availableInventions.Add(inv);
+            }
+        }
+        
+        if (availableInventions.Count == 0) return;
         
         var inventionData = availableInventions[_random.Next(availableInventions.Count)];
         
@@ -996,10 +1108,10 @@ public class Simulator
         _inventions.Add(invention);
         _inventionsById[invention.Id] = invention;
         
-        // Apply invention effects to all living people
+        // Apply invention effects to all living people - avoid LINQ (reuse livingPeople from earlier)
         if (invention.HealthBonus > 0 || invention.LifespanBonus > 0)
         {
-            foreach (var person in _people.Where(p => p.IsAlive))
+            foreach (var person in livingPeople)
             {
                 person.Health = Math.Min(100, person.Health + invention.HealthBonus);
             }
@@ -1013,7 +1125,18 @@ public class Simulator
         if (_countries.Count < 2) return;
         
         var attacker = _countries[_random.Next(_countries.Count)];
-        var defender = _countries.Where(c => c.Id != attacker.Id).OrderBy(_ => _random.Next()).FirstOrDefault();
+        
+        // Pick random defender without LINQ
+        Country? defender = null;
+        var potentialDefenders = new List<Country>();
+        foreach (var country in _countries)
+        {
+            if (country.Id != attacker.Id)
+                potentialDefenders.Add(country);
+        }
+        
+        if (potentialDefenders.Count > 0)
+            defender = potentialDefenders[_random.Next(potentialDefenders.Count)];
         
         if (defender == null) return;
         
@@ -1079,13 +1202,39 @@ public class Simulator
         }
         else
         {
-            // Check for breeding-age females
-            var breedingFemales = livingPeople.Count(p => 
-                p.Gender == "Female" && p.GetAge(_currentDate) >= 16 && p.GetAge(_currentDate) <= 45);
+            // Calculate demographics in single pass - avoid multiple Count() calls
+            int breedingFemales = 0;
+            int youngFemales = 0;
+            int breedingMales = 0;
+            int youngMales = 0;
+            int maleCount = 0;
+            int femaleCount = 0;
+            int marriedCount = 0;
             
-            // Check for young females who might reach breeding age
-            var youngFemales = livingPeople.Count(p => 
-                p.Gender == "Female" && p.GetAge(_currentDate) < 16);
+            foreach (var person in livingPeople)
+            {
+                int age = person.GetAge(_currentDate);
+                
+                if (person.Gender == "Male")
+                {
+                    maleCount++;
+                    if (age >= 16 && age <= 60)
+                        breedingMales++;
+                    else if (age < 16)
+                        youngMales++;
+                }
+                else // Female
+                {
+                    femaleCount++;
+                    if (age >= 16 && age <= 45)
+                        breedingFemales++;
+                    else if (age < 16)
+                        youngFemales++;
+                }
+                
+                if (person.IsMarried)
+                    marriedCount++;
+            }
             
             if (breedingFemales == 0 && youngFemales == 0)
             {
@@ -1094,32 +1243,70 @@ public class Simulator
             }
             else if (breedingFemales == 0 && youngFemales > 0)
             {
-                // Check if there are any males who could breed with future females
-                var breedingMales = livingPeople.Count(p => 
-                    p.Gender == "Male" && p.GetAge(_currentDate) >= 16 && p.GetAge(_currentDate) <= 60);
-                var youngMales = livingPeople.Count(p => 
-                    p.Gender == "Male" && p.GetAge(_currentDate) < 16);
-                
                 if (breedingMales == 0 && youngMales == 0)
                 {
                     simulationEnded = true;
                     endReason = "No males of breeding age remain and no young males to continue the population. The civilization will end.";
                 }
             }
+            
+            return new SimulationStats
+            {
+                CurrentDate = _currentDate,
+                TotalPopulation = _people.Count,
+                LivingPopulation = livingPeople.Count,
+                TotalBirths = _people.Count,
+                TotalDeaths = _people.Count - livingPeople.Count,
+                TotalMarriages = marriedCount / 2,
+                TotalCities = _cities.Count,
+                TotalCountries = _countries.Count,
+                TotalReligions = _religions.Count,
+                TotalInventions = _inventions.Count,
+                TotalWars = _wars.Count,
+                GenerationNumber = _generationNumber,
+                SimulationEnded = simulationEnded,
+                EndReason = endReason,
+                MaleCount = maleCount,
+                FemaleCount = femaleCount,
+                RecentEvents = _recentEvents.TakeLast(10).ToList(),
+                TopJobs = GetTopJobs(livingPeople),
+                FamilyTrees = GetActiveFamilyTrees(livingPeople),
+                Cities = _cities.OrderByDescending(c => c.Population).Take(10).Select(c => new CityInfo 
+                { 
+                    Name = c.Name, 
+                    Population = c.Population, 
+                    Year = c.FoundedDate.Year 
+                }).ToList(),
+                Countries = _countries.OrderByDescending(c => c.Population).Take(10).Select(c => new CountryInfo 
+                { 
+                    Name = c.Name, 
+                    Population = c.Population, 
+                    Year = c.FoundedDate.Year 
+                }).ToList(),
+                Religions = _religions.OrderByDescending(r => r.Followers).Take(10).Select(r => new ReligionInfo 
+                { 
+                    Name = r.Name, 
+                    Followers = r.Followers, 
+                    Year = r.FoundedDate.Year 
+                }).ToList(),
+                Inventions = _inventions.OrderBy(i => i.DiscoveredDate).Take(15).Select(i => new InventionInfo 
+                { 
+                    Name = i.Name, 
+                    Category = i.Category, 
+                    Year = i.DiscoveredDate.Year 
+                }).ToList()
+            };
         }
         
-        // Calculate gender distribution
-        var maleCount = livingPeople.Count(p => p.Gender == "Male");
-        var femaleCount = livingPeople.Count(p => p.Gender == "Female");
-        
+        // If we get here, all people died
         return new SimulationStats
         {
             CurrentDate = _currentDate,
             TotalPopulation = _people.Count,
-            LivingPopulation = livingPeople.Count,
+            LivingPopulation = 0,
             TotalBirths = _people.Count,
-            TotalDeaths = _people.Count - livingPeople.Count,
-            TotalMarriages = livingPeople.Count(p => p.IsMarried) / 2,
+            TotalDeaths = _people.Count,
+            TotalMarriages = 0,
             TotalCities = _cities.Count,
             TotalCountries = _countries.Count,
             TotalReligions = _religions.Count,
@@ -1128,35 +1315,15 @@ public class Simulator
             GenerationNumber = _generationNumber,
             SimulationEnded = simulationEnded,
             EndReason = endReason,
-            MaleCount = maleCount,
-            FemaleCount = femaleCount,
+            MaleCount = 0,
+            FemaleCount = 0,
             RecentEvents = _recentEvents.TakeLast(10).ToList(),
-            TopJobs = GetTopJobs(livingPeople),
-            FamilyTrees = GetActiveFamilyTrees(livingPeople),
-            Cities = _cities.OrderByDescending(c => c.Population).Take(10).Select(c => new CityInfo 
-            { 
-                Name = c.Name, 
-                Population = c.Population, 
-                Year = c.FoundedDate.Year 
-            }).ToList(),
-            Countries = _countries.OrderByDescending(c => c.Population).Take(10).Select(c => new CountryInfo 
-            { 
-                Name = c.Name, 
-                Population = c.Population, 
-                Year = c.FoundedDate.Year 
-            }).ToList(),
-            Religions = _religions.OrderByDescending(r => r.Followers).Take(10).Select(r => new ReligionInfo 
-            { 
-                Name = r.Name, 
-                Followers = r.Followers, 
-                Year = r.FoundedDate.Year 
-            }).ToList(),
-            Inventions = _inventions.OrderBy(i => i.DiscoveredDate).Take(15).Select(i => new InventionInfo 
-            { 
-                Name = i.Name, 
-                Category = i.Category, 
-                Year = i.DiscoveredDate.Year 
-            }).ToList()
+            TopJobs = new List<JobStatistic>(),
+            FamilyTrees = new List<FamilyTreeNode>(),
+            Cities = new List<CityInfo>(),
+            Countries = new List<CountryInfo>(),
+            Religions = new List<ReligionInfo>(),
+            Inventions = new List<InventionInfo>()
         };
     }
     
@@ -1175,12 +1342,25 @@ public class Simulator
             jobGroups[jobName]++;
         }
         
-        // Convert to list and return top 10
-        return jobGroups
-            .Select(kvp => new JobStatistic { JobName = kvp.Key, Count = kvp.Value })
-            .OrderByDescending(j => j.Count)
-            .Take(10)
-            .ToList();
+        // Convert to list and sort without LINQ
+        var jobList = new List<JobStatistic>();
+        foreach (var kvp in jobGroups)
+        {
+            jobList.Add(new JobStatistic { JobName = kvp.Key, Count = kvp.Value });
+        }
+        
+        // Sort descending by count
+        jobList.Sort((a, b) => b.Count.CompareTo(a.Count));
+        
+        // Take top 10
+        var result = new List<JobStatistic>();
+        int count = Math.Min(10, jobList.Count);
+        for (int i = 0; i < count; i++)
+        {
+            result.Add(jobList[i]);
+        }
+        
+        return result;
     }
     
     private List<FamilyTreeNode> GetActiveFamilyTrees(List<Person> livingPeople)
@@ -1203,29 +1383,43 @@ public class Simulator
             }
         }
         
-        // Fallback: Find male roots - people with no parents
-        var roots = _people.Where(p => 
-            !p.FatherId.HasValue && 
-            !p.MotherId.HasValue &&
-            p.Gender == "Male"
-        ).ToList();
-        
-        // If no roots, find male children with most descendants
-        if (roots.Count == 0)
+        // Fallback: Find male roots - people with no parents - avoid LINQ
+        var roots = new List<Person>();
+        foreach (var person in _people)
         {
-            var potentialRoots = livingPeople
-                .Where(p => p.Gender == "Male" && HasLivingDescendants(p.Id, livingPeople))
-                .OrderByDescending(p => CountLivingDescendants(p.Id))
-                .Take(10) // Top 10 most active male lines
-                .ToList();
-            
-            roots = potentialRoots;
+            if (!person.FatherId.HasValue && !person.MotherId.HasValue && person.Gender == "Male")
+                roots.Add(person);
         }
         
-        // Build tree for each root (limit to top 1 tree to prevent overflow)
-        foreach (var root in roots.Take(1))
+        // If no roots, find male children with most descendants - avoid LINQ
+        if (roots.Count == 0)
         {
-            trees.Add(BuildFamilyTreeNode(root, livingPeople));
+            var potentialRoots = new List<(Person person, int descendants)>();
+            
+            foreach (var person in livingPeople)
+            {
+                if (person.Gender == "Male" && HasLivingDescendants(person.Id, livingPeople))
+                {
+                    int descendants = CountLivingDescendants(person.Id);
+                    potentialRoots.Add((person, descendants));
+                }
+            }
+            
+            // Sort by descendant count descending
+            potentialRoots.Sort((a, b) => b.descendants.CompareTo(a.descendants));
+            
+            // Take top 10
+            int count = Math.Min(10, potentialRoots.Count);
+            for (int i = 0; i < count; i++)
+            {
+                roots.Add(potentialRoots[i].person);
+            }
+        }
+        
+        // Build tree for first root only (limit to 1 tree to prevent overflow)
+        if (roots.Count > 0)
+        {
+            trees.Add(BuildFamilyTreeNode(roots[0], livingPeople));
         }
         
         return trees;
@@ -1233,14 +1427,15 @@ public class Simulator
     
     private bool HasLivingDescendants(long personId, List<Person> livingPeople)
     {
-        // Check if any living person has this person as parent
-        if (livingPeople.Any(p => p.FatherId == personId || p.MotherId == personId))
-            return true;
+        // Check if any living person has this person as parent - using O(1) lookup
+        var children = GetChildrenOfPerson(personId);
         
-        // Check descendants recursively
-        var children = _people.Where(p => p.FatherId == personId || p.MotherId == personId);
         foreach (var child in children)
         {
+            if (child.IsAlive)
+                return true;
+            
+            // Check descendants recursively
             if (HasLivingDescendants(child.Id, livingPeople))
                 return true;
         }
@@ -1250,17 +1445,18 @@ public class Simulator
     
     private int CountLivingDescendants(long personId)
     {
-        var livingPeople = GetLivingPeople();
+        // Get all children using O(1) lookup instead of LINQ
+        var children = GetChildrenOfPerson(personId);
         
-        // Get all children
-        var children = _people.Where(p => p.FatherId == personId || p.MotherId == personId).ToList();
+        int count = 0;
         
-        // Count living children
-        int count = children.Count(c => c.IsAlive);
-        
-        // Count descendants of all children recursively
+        // Count living children and descendants
         foreach (var child in children)
         {
+            if (child.IsAlive)
+                count++;
+            
+            // Count descendants recursively
             count += CountLivingDescendants(child.Id);
         }
         
@@ -1281,18 +1477,30 @@ public class Simulator
             Children = new List<FamilyTreeNode>()
         };
         
-        // Only add living children or children with living descendants
-        var children = _people
-            .Where(p => p.FatherId == person.Id || p.MotherId == person.Id)
-            .Where(c => c.IsAlive || HasLivingDescendants(c.Id, livingPeople))
-            .OrderByDescending(c => c.IsAlive)
-            .ThenBy(c => c.BirthDate)
-            .Take(10) // Limit children shown to prevent huge trees
-            .ToList();
+        // Only add living children or children with living descendants - using O(1) lookup
+        var allChildren = GetChildrenOfPerson(person.Id);
+        var eligibleChildren = new List<Person>();
         
-        foreach (var child in children)
+        // Filter children without LINQ
+        foreach (var child in allChildren)
         {
-            node.Children.Add(BuildFamilyTreeNode(child, livingPeople));
+            if (child.IsAlive || HasLivingDescendants(child.Id, livingPeople))
+                eligibleChildren.Add(child);
+        }
+        
+        // Sort: alive children first, then by birth date
+        eligibleChildren.Sort((a, b) => 
+        {
+            if (a.IsAlive != b.IsAlive)
+                return b.IsAlive.CompareTo(a.IsAlive); // alive first
+            return a.BirthDate.CompareTo(b.BirthDate);
+        });
+        
+        // Take first 10 children
+        int childCount = Math.Min(10, eligibleChildren.Count);
+        for (int i = 0; i < childCount; i++)
+        {
+            node.Children.Add(BuildFamilyTreeNode(eligibleChildren[i], livingPeople));
         }
         
         return node;
