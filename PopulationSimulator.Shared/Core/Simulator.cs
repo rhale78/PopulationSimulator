@@ -33,7 +33,7 @@ public class Simulator
     private long _nextTempId = -1;
     private int _generationNumber = 0;
     private int _syncCounter = 0;
-    private const int SYNC_INTERVAL = 100; // Sync every 100 days
+    private const int SYNC_INTERVAL = 1000000; // Sync every 100 days
     private bool _livingCacheValid = false;
 
     private long? _adamId;
@@ -359,6 +359,7 @@ public class Simulator
         
         foreach (var person in livingPeople)
         {
+            if (person is null) continue;
             int age = person.GetAge(_currentDate);
             double deathChance = CalculateDeathChance(person, age);
             
@@ -625,6 +626,7 @@ public class Simulator
     
     private bool CanHaveChildren(Person p)
     {
+        if (p is null) return false;
         if (p.Gender != "Female" || !p.IsAlive || !p.IsMarried) return false;
         int age = p.GetAge(_currentDate);
         if (IsAdamOrEve(p))
