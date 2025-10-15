@@ -1148,19 +1148,34 @@ public class Simulator
     private List<FamilyTreeNode> GetActiveFamilyTrees()
     {
         var trees = new List<FamilyTreeNode>();
-        var livingPeople = GetLivingPeople();
         
-        // Find male roots - people with no parents who have living descendants
+        // Always try to show Adam's tree first (if we have Adam ID saved)
+        if (_adamId.HasValue)
+        {
+            Person? adam = null;
+            if (_peopleById.ContainsKey(_adamId.Value))
+                adam = _peopleById[_adamId.Value];
+            else if (_deadPeopleById.ContainsKey(_adamId.Value))
+                adam = _deadPeopleById[_adamId.Value];
+            
+            if (adam != null)
+            {
+                trees.Add(BuildFamilyTreeNode(adam));
+                return trees;
+            }
+        }
+        
+        // Fallback: Find male roots - people with no parents
         var roots = _people.Where(p => 
             !p.FatherId.HasValue && 
             !p.MotherId.HasValue &&
-            p.Gender == "Male" &&
-            HasLivingDescendants(p.Id)
+            p.Gender == "Male"
         ).ToList();
         
-        // If Adam is dead, find male children with most descendants
-        if (roots.Count == 0 || roots.All(r => !r.IsAlive))
+        // If no roots, find male children with most descendants
+        if (roots.Count == 0)
         {
+            var livingPeople = GetLivingPeople();
             var potentialRoots = livingPeople
                 .Where(p => p.Gender == "Male" && HasLivingDescendants(p.Id))
                 .OrderByDescending(p => CountLivingDescendants(p.Id))
