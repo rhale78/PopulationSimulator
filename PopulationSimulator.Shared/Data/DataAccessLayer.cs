@@ -24,19 +24,19 @@ public class DataAccessLayer
                 FirstName TEXT NOT NULL,
                 LastName TEXT NOT NULL,
                 Gender TEXT NOT NULL,
-                BirthDate TEXT NOT NULL,
-                DeathDate TEXT,
+                BirthDay INTEGER NOT NULL,
+                DeathDay INTEGER,
                 IsAlive INTEGER NOT NULL,
                 FatherId INTEGER,
                 MotherId INTEGER,
                 SpouseId INTEGER,
                 SecondarySpouseId INTEGER,
-                MarriageDate TEXT,
+                MarriageDay INTEGER,
                 CityId INTEGER,
                 CountryId INTEGER,
                 ReligionId INTEGER,
                 JobId INTEGER,
-                JobStartDate TEXT,
+                JobStartDay INTEGER,
                 Intelligence INTEGER NOT NULL,
                 Strength INTEGER NOT NULL,
                 Health INTEGER NOT NULL,
@@ -51,7 +51,7 @@ public class DataAccessLayer
                 HairColor TEXT NOT NULL,
                 Height INTEGER NOT NULL,
                 IsPregnant INTEGER NOT NULL,
-                PregnancyDueDate TEXT,
+                PregnancyDueDay INTEGER,
                 PregnancyFatherId INTEGER,
                 PregnancyMultiplier INTEGER NOT NULL,
                 DynastyId INTEGER,
@@ -64,7 +64,7 @@ public class DataAccessLayer
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT NOT NULL,
                 CountryId INTEGER,
-                FoundedDate TEXT NOT NULL,
+                FoundedDay INTEGER NOT NULL,
                 Population INTEGER NOT NULL,
                 FounderId INTEGER,
                 Wealth REAL NOT NULL
@@ -73,7 +73,7 @@ public class DataAccessLayer
             CREATE TABLE IF NOT EXISTS Countries (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT NOT NULL,
-                FoundedDate TEXT NOT NULL,
+                FoundedDay INTEGER NOT NULL,
                 RulerId INTEGER,
                 CapitalCityId INTEGER,
                 Population INTEGER NOT NULL,
@@ -85,7 +85,7 @@ public class DataAccessLayer
             CREATE TABLE IF NOT EXISTS Religions (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT NOT NULL,
-                FoundedDate TEXT NOT NULL,
+                FoundedDay INTEGER NOT NULL,
                 FounderId INTEGER,
                 Followers INTEGER NOT NULL,
                 Beliefs TEXT NOT NULL,
@@ -109,7 +109,7 @@ public class DataAccessLayer
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT NOT NULL,
                 Description TEXT NOT NULL,
-                DiscoveredDate TEXT NOT NULL,
+                DiscoveredDay INTEGER NOT NULL,
                 InventorId INTEGER,
                 RequiredIntelligence INTEGER NOT NULL,
                 Category TEXT NOT NULL,
@@ -120,8 +120,8 @@ public class DataAccessLayer
             CREATE TABLE IF NOT EXISTS Wars (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT NOT NULL,
-                StartDate TEXT NOT NULL,
-                EndDate TEXT,
+                StartDay INTEGER NOT NULL,
+                EndDay INTEGER,
                 AttackerCountryId INTEGER NOT NULL,
                 DefenderCountryId INTEGER NOT NULL,
                 WinnerCountryId INTEGER,
@@ -131,7 +131,7 @@ public class DataAccessLayer
             
             CREATE TABLE IF NOT EXISTS Events (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                Date TEXT NOT NULL,
+                Day INTEGER NOT NULL,
                 EventType TEXT NOT NULL,
                 Description TEXT NOT NULL,
                 PersonId INTEGER,
@@ -146,7 +146,7 @@ public class DataAccessLayer
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 Name TEXT NOT NULL,
                 FounderId INTEGER NOT NULL,
-                FoundedDate TEXT NOT NULL,
+                FoundedDay INTEGER NOT NULL,
                 CurrentRulerId INTEGER,
                 MemberCount INTEGER NOT NULL
             );
@@ -157,7 +157,7 @@ public class DataAccessLayer
                 Description TEXT NOT NULL,
                 CountryId INTEGER,
                 ReligionId INTEGER,
-                EnactedDate TEXT NOT NULL,
+                EnactedDay INTEGER NOT NULL,
                 Category TEXT NOT NULL
             );
         ";
@@ -272,19 +272,19 @@ public class DataAccessLayer
         command.Parameters.AddWithValue("@FirstName", person.FirstName);
         command.Parameters.AddWithValue("@LastName", person.LastName);
         command.Parameters.AddWithValue("@Gender", person.Gender);
-        command.Parameters.AddWithValue("@BirthDate", person.BirthDate.ToString("o"));
-        command.Parameters.AddWithValue("@DeathDate", person.DeathDate?.ToString("o") ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@BirthDate", person.BirthDay);
+        command.Parameters.AddWithValue("@DeathDate", person.DeathDay.HasValue ? (object)person.DeathDay.Value : (object)DBNull.Value);
         command.Parameters.AddWithValue("@IsAlive", person.IsAlive ? 1 : 0);
         command.Parameters.AddWithValue("@FatherId", person.FatherId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@MotherId", person.MotherId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@SpouseId", person.SpouseId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@SecondarySpouseId", person.SecondarySpouseId ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("@MarriageDate", person.MarriageDate?.ToString("o") ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@MarriageDate", person.MarriageDay.HasValue ? (object)person.MarriageDay.Value : (object)DBNull.Value);
         command.Parameters.AddWithValue("@CityId", person.CityId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@CountryId", person.CountryId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@ReligionId", person.ReligionId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@JobId", person.JobId ?? (object)DBNull.Value);
-        command.Parameters.AddWithValue("@JobStartDate", person.JobStartDate?.ToString("o") ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@JobStartDate", person.JobStartDay.HasValue ? (object)person.JobStartDay.Value : (object)DBNull.Value);
         command.Parameters.AddWithValue("@Intelligence", person.Intelligence);
         command.Parameters.AddWithValue("@Strength", person.Strength);
         command.Parameters.AddWithValue("@Health", person.Health);
@@ -299,7 +299,7 @@ public class DataAccessLayer
         command.Parameters.AddWithValue("@HairColor", person.HairColor);
         command.Parameters.AddWithValue("@Height", person.Height);
         command.Parameters.AddWithValue("@IsPregnant", person.IsPregnant ? 1 : 0);
-        command.Parameters.AddWithValue("@PregnancyDueDate", person.PregnancyDueDate?.ToString("o") ?? (object)DBNull.Value);
+        command.Parameters.AddWithValue("@PregnancyDueDate", person.PregnancyDueDay.HasValue ? (object)person.PregnancyDueDay.Value : (object)DBNull.Value);
         command.Parameters.AddWithValue("@PregnancyFatherId", person.PregnancyFatherId ?? (object)DBNull.Value);
         command.Parameters.AddWithValue("@PregnancyMultiplier", person.PregnancyMultiplier);
         command.Parameters.AddWithValue("@DynastyId", person.DynastyId ?? (object)DBNull.Value);
@@ -369,7 +369,7 @@ public class DataAccessLayer
             
             command.Parameters.AddWithValue("@Name", city.Name);
             command.Parameters.AddWithValue("@CountryId", city.CountryId ?? (object)DBNull.Value);
-            command.Parameters.AddWithValue("@FoundedDate", city.FoundedDate.ToString("o"));
+            command.Parameters.AddWithValue("@FoundedDate", city.FoundedDay);
             command.Parameters.AddWithValue("@Population", city.Population);
             command.Parameters.AddWithValue("@FounderId", city.FounderId ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@Wealth", city.Wealth);
@@ -411,7 +411,7 @@ public class DataAccessLayer
             }
             
             command.Parameters.AddWithValue("@Name", country.Name);
-            command.Parameters.AddWithValue("@FoundedDate", country.FoundedDate.ToString("o"));
+            command.Parameters.AddWithValue("@FoundedDate", country.FoundedDay);
             command.Parameters.AddWithValue("@RulerId", country.RulerId ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@CapitalCityId", country.CapitalCityId ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@Population", country.Population);
@@ -455,7 +455,7 @@ public class DataAccessLayer
             }
             
             command.Parameters.AddWithValue("@Name", religion.Name);
-            command.Parameters.AddWithValue("@FoundedDate", religion.FoundedDate.ToString("o"));
+            command.Parameters.AddWithValue("@FoundedDate", religion.FoundedDay);
             command.Parameters.AddWithValue("@FounderId", religion.FounderId ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@Followers", religion.Followers);
             command.Parameters.AddWithValue("@Beliefs", religion.Beliefs);
@@ -482,10 +482,10 @@ public class DataAccessLayer
             {
                 var command = connection.CreateCommand();
                 command.CommandText = @"
-                    INSERT INTO Events (Date, EventType, Description, PersonId, CityId, CountryId, ReligionId, WarId, InventionId)
-                    VALUES (@Date, @EventType, @Description, @PersonId, @CityId, @CountryId, @ReligionId, @WarId, @InventionId)
+                    INSERT INTO Events (Day, EventType, Description, PersonId, CityId, CountryId, ReligionId, WarId, InventionId)
+                    VALUES (@Day, @EventType, @Description, @PersonId, @CityId, @CountryId, @ReligionId, @WarId, @InventionId)
                 ";
-                command.Parameters.AddWithValue("@Date", evt.Date.ToString("o"));
+                command.Parameters.AddWithValue("@Day", evt.Day);
                 command.Parameters.AddWithValue("@EventType", evt.EventType);
                 command.Parameters.AddWithValue("@Description", evt.Description);
                 command.Parameters.AddWithValue("@PersonId", evt.PersonId ?? (object)DBNull.Value);
@@ -519,7 +519,7 @@ public class DataAccessLayer
                 ";
                 command.Parameters.AddWithValue("@Name", invention.Name);
                 command.Parameters.AddWithValue("@Description", invention.Description);
-                command.Parameters.AddWithValue("@DiscoveredDate", invention.DiscoveredDate.ToString("o"));
+                command.Parameters.AddWithValue("@DiscoveredDate", invention.DiscoveredDay);
                 command.Parameters.AddWithValue("@InventorId", invention.InventorId ?? (object)DBNull.Value);
                 command.Parameters.AddWithValue("@RequiredIntelligence", invention.RequiredIntelligence);
                 command.Parameters.AddWithValue("@Category", invention.Category);
@@ -561,8 +561,8 @@ public class DataAccessLayer
             }
             
             command.Parameters.AddWithValue("@Name", war.Name);
-            command.Parameters.AddWithValue("@StartDate", war.StartDate.ToString("o"));
-            command.Parameters.AddWithValue("@EndDate", war.EndDate?.ToString("o") ?? (object)DBNull.Value);
+            command.Parameters.AddWithValue("@StartDate", war.StartDay);
+            command.Parameters.AddWithValue("@EndDate", war.EndDay.HasValue ? (object)war.EndDay.Value : (object)DBNull.Value);
             command.Parameters.AddWithValue("@AttackerCountryId", war.AttackerCountryId);
             command.Parameters.AddWithValue("@DefenderCountryId", war.DefenderCountryId);
             command.Parameters.AddWithValue("@WinnerCountryId", war.WinnerCountryId ?? (object)DBNull.Value);
@@ -606,7 +606,7 @@ public class DataAccessLayer
             
             command.Parameters.AddWithValue("@Name", dynasty.Name);
             command.Parameters.AddWithValue("@FounderId", dynasty.FounderId);
-            command.Parameters.AddWithValue("@FoundedDate", dynasty.FoundedDate.ToString("o"));
+            command.Parameters.AddWithValue("@FoundedDate", dynasty.FoundedDay);
             command.Parameters.AddWithValue("@CurrentRulerId", dynasty.CurrentRulerId ?? (object)DBNull.Value);
             command.Parameters.AddWithValue("@MemberCount", dynasty.MemberCount);
             command.ExecuteNonQuery();

@@ -12,7 +12,7 @@ public class PersonTests
         // Arrange
         var person = new Person
         {
-            BirthDate = new DateTime(2000, 1, 1),
+            BirthDay = new DateTime(2000, 1, 1),
             IsAlive = true
         };
         var currentDate = new DateTime(2020, 1, 1);
@@ -30,7 +30,7 @@ public class PersonTests
         // Arrange
         var person = new Person
         {
-            BirthDate = new DateTime(2000, 1, 1),
+            BirthDay = new DateTime(2000, 1, 1),
             DeathDate = new DateTime(2015, 1, 1),
             IsAlive = false
         };
@@ -58,12 +58,12 @@ public class PersonTests
             Gender = gender,
             IsAlive = isAlive,
             SpouseId = isMarried ? 100L : null,
-            BirthDate = DateTime.Now.AddYears(-age),
+            BirthDay = 0.AddYears(-age),
             IsPregnant = false
         };
         
         // Act
-        var result = person.CanHaveChildren(DateTime.Now);
+        var result = person.CanHaveChildren(0);
         
         // Assert
         Assert.Equal(expected, result);
@@ -81,11 +81,11 @@ public class PersonTests
         {
             IsAlive = isAlive,
             SpouseId = isMarried ? 100L : null,
-            BirthDate = DateTime.Now.AddYears(-age)
+            BirthDay = 0.AddYears(-age)
         };
         
         // Act
-        var result = person.IsEligibleForMarriage(DateTime.Now);
+        var result = person.IsEligibleForMarriage(0);
         
         // Assert
         Assert.Equal(expected, result);
@@ -103,11 +103,11 @@ public class PersonTests
         {
             IsAlive = isAlive,
             JobId = hasJob ? 1L : null,
-            BirthDate = DateTime.Now.AddYears(-age)
+            BirthDay = 0.AddYears(-age)
         };
         
         // Act
-        var result = person.IsEligibleForJob(DateTime.Now);
+        var result = person.IsEligibleForJob(0);
         
         // Assert
         Assert.Equal(expected, result);
