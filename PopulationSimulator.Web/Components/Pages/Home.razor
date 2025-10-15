@@ -1,0 +1,398 @@
+﻿@page "/"
+@using PopulationSimulator.Core
+@using PopulationSimulator.Services
+@inject SimulatorService SimulatorService
+@rendermode InteractiveServer
+@implements IDisposable
+
+<PageTitle>Population Simulator</PageTitle>
+
+<div class="container-fluid mt-3">
+    @* Controls at top as requested *@
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">⚙️ Controls</h5>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group me-3" role="group">
+                        <button class="btn btn-success" @onclick="SimulatorService.IncreaseSpeed">
+                            ➕ Speed Up
+                        </button>
+                        <button class="btn btn-warning" @onclick="SimulatorService.DecreaseSpeed">
+                            ➖ Slow Down
+                        </button>
+                        <button class="btn btn-danger" @onclick="RestartSimulation">
+                            🔄 Restart
+                        </button>
+                    </div>
+                    <span class="text-muted">Current speed: @_simulationSpeed x (1 day per @((int)(1000.0 / Math.Max(1, _simulationSpeed)))ms)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Main header *@
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-primary mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">🌍 Advanced Population Simulator - Living World</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <strong>Current Date:</strong> Year @_stats.CurrentDate.Year, Day @_stats.CurrentDate.DayOfYear
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Generation:</strong> @_stats.GenerationNumber
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Gender:</strong> @_stats.MaleCount ♂ / @_stats.FemaleCount ♀
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Speed:</strong> @_simulationSpeed x
+                        </div>
+                    </div>
+                    @if (_stats.SimulationEnded)
+                    {
+                        <div class="alert alert-danger mt-3 mb-0">
+                            <strong>⚠️ Simulation Ended:</strong> @_stats.EndReason
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">📊 Population Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <td><strong>Total Population:</strong></td>
+                                <td class="text-end">@_stats.TotalPopulation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Living:</strong></td>
+                                <td class="text-end">@_stats.LivingPopulation</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Males:</strong></td>
+                                <td class="text-end">@_stats.MaleCount</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Females:</strong></td>
+                                <td class="text-end">@_stats.FemaleCount</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Births:</strong></td>
+                                <td class="text-end">@_stats.TotalBirths</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Deaths:</strong></td>
+                                <td class="text-end">@_stats.TotalDeaths</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Marriages:</strong></td>
+                                <td class="text-end">@_stats.TotalMarriages</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-3">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">🏛️ Civilization Progress</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <td><strong>Cities:</strong></td>
+                                <td class="text-end">@_stats.TotalCities</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Countries:</strong></td>
+                                <td class="text-end">@_stats.TotalCountries</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Religions:</strong></td>
+                                <td class="text-end">@_stats.TotalReligions</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Inventions:</strong></td>
+                                <td class="text-end">@_stats.TotalInventions</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Wars:</strong></td>
+                                <td class="text-end">@_stats.TotalWars</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (_stats.TopJobs.Any())
+    {
+        <div class="row">
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header bg-warning">
+                        <h5 class="mb-0">💼 Top Occupations</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Job</th>
+                                    <th class="text-end">Count</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var (job, index) in _stats.TopJobs.Select((j, i) => (j, i)))
+                                {
+                                    <tr>
+                                        <td>@(index + 1)</td>
+                                        <td>@job.JobName</td>
+                                        <td class="text-end">@job.Count</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* Family Tree with proper indentation *@
+    @if (_stats.FamilyTrees.Any())
+    {
+        <div class="row">
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">👨‍👩‍👧‍👦 Family Tree (Adam & Eve's Lineage)</h5>
+                    </div>
+                    <div class="card-body" style="max-height: 400px; overflow-y: auto; font-family: monospace;">
+                        @RenderFamilyTreeWithIndent(_stats.FamilyTrees.First(), 0)
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* Recent Births *@
+    @{
+        var recentBirths = _stats.RecentEvents.Where(e => e.EventType == "Birth").Take(10).ToList();
+    }
+    @if (recentBirths.Any())
+    {
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card mb-3">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">👶 Recent Births</h5>
+                    </div>
+                    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                        <ul class="list-unstyled">
+                            @foreach (var evt in recentBirths)
+                            {
+                                <li class="mb-2">
+                                    <small class="text-muted">Year @evt.Date.Year:</small><br/>
+                                    @evt.Description
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            @* Recent Marriages *@
+            <div class="col-md-4">
+                @{
+                    var recentMarriages = _stats.RecentEvents.Where(e => e.EventType == "Marriage").Take(10).ToList();
+                }
+                @if (recentMarriages.Any())
+                {
+                    <div class="card mb-3">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">💑 Recent Marriages</h5>
+                        </div>
+                        <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                            <ul class="list-unstyled">
+                                @foreach (var evt in recentMarriages)
+                                {
+                                    <li class="mb-2">
+                                        <small class="text-muted">Year @evt.Date.Year:</small><br/>
+                                        @evt.Description
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @* Recent Deaths *@
+            <div class="col-md-4">
+                @{
+                    var recentDeaths = _stats.RecentEvents.Where(e => e.EventType == "Death").Take(10).ToList();
+                }
+                @if (recentDeaths.Any())
+                {
+                    <div class="card mb-3">
+                        <div class="card-header bg-dark text-white">
+                            <h5 class="mb-0">⚰️ Recent Deaths</h5>
+                        </div>
+                        <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                            <ul class="list-unstyled">
+                                @foreach (var evt in recentDeaths)
+                                {
+                                    <li class="mb-2">
+                                        <small class="text-muted">Year @evt.Date.Year:</small><br/>
+                                        @evt.Description
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @* All Recent Events *@
+    <div class="row">
+        <div class="col-12">
+            <div class="card mb-3">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">📰 Recent Events (All)</h5>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    @if (_stats.RecentEvents.Any())
+                    {
+                        <ul class="list-unstyled">
+                            @foreach (var evt in _stats.RecentEvents)
+                            {
+                                <li class="mb-2">
+                                    <span class="badge @GetEventBadgeClass(evt.EventType)">@evt.EventType</span>
+                                    <small class="text-muted">Year @evt.Date.Year:</small>
+                                    @evt.Description
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p class="text-muted">No events yet...</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private SimulationStats _stats = new();
+    private int _simulationSpeed = 1;
+
+    protected override void OnInitialized()
+    {
+        SimulatorService.OnStatsUpdated += HandleStatsUpdated;
+        SimulatorService.OnSpeedChanged += HandleSpeedChanged;
+        SimulatorService.OnSimulationRestarted += HandleSimulationRestarted;
+        
+        // Start the simulation
+        SimulatorService.Start();
+    }
+
+    private void HandleStatsUpdated(SimulationStats stats)
+    {
+        _stats = stats;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleSpeedChanged(int speed)
+    {
+        _simulationSpeed = speed;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleSimulationRestarted()
+    {
+        _stats = new SimulationStats();
+        _simulationSpeed = 1;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void RestartSimulation()
+    {
+        SimulatorService.Restart();
+    }
+
+    private RenderFragment RenderFamilyTreeWithIndent(FamilyTreeNode node, int depth)
+    {
+        return builder =>
+        {
+            // Create proper indentation with └─ or ├─ characters
+            var indent = depth == 0 ? "" : new string(' ', (depth - 1) * 2) + "└─";
+            var status = node.IsAlive ? "✅" : "⚰️";
+            var spouseInfo = !string.IsNullOrEmpty(node.SpouseName) ? $" ❤️ {node.SpouseName}" : "";
+            
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "mb-1");
+            builder.AddAttribute(2, "style", $"padding-left: {depth * 20}px");
+            builder.AddContent(3, $"{indent}{status} {node.FirstName} {node.LastName} ({node.Gender}, Age: {node.Age}){spouseInfo}");
+            builder.CloseElement();
+
+            if (node.Children.Any() && depth < 5)
+            {
+                foreach (var child in node.Children.Take(10))
+                {
+                    builder.AddContent(4, RenderFamilyTreeWithIndent(child, depth + 1));
+                }
+            }
+        };
+    }
+
+    private string GetEventBadgeClass(string eventType)
+    {
+        return eventType switch
+        {
+            "Birth" => "bg-success",
+            "Death" => "bg-dark",
+            "Marriage" => "bg-info",
+            "Pregnancy" => "bg-warning",
+            "Invention" => "bg-warning",
+            "City Founded" => "bg-primary",
+            "Country Founded" => "bg-primary",
+            "Religion Founded" => "bg-secondary",
+            "War" => "bg-danger",
+            "Law" => "bg-info",
+            "Job" => "bg-secondary",
+            _ => "bg-secondary"
+        };
+    }
+
+    public void Dispose()
+    {
+        SimulatorService.OnStatsUpdated -= HandleStatsUpdated;
+        SimulatorService.OnSpeedChanged -= HandleSpeedChanged;
+        SimulatorService.OnSimulationRestarted -= HandleSimulationRestarted;
+    }
+}
+

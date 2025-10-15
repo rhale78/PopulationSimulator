@@ -50,14 +50,17 @@ public class Simulator
     public void Initialize()
     {
         _dataAccess.InitializeDatabase();
+        _dataAccess.ClearDatabase(); // Clear any old data to avoid ID conflicts
+        
+        // Always seed jobs first (they use temp IDs and don't persist across restarts properly)
+        SeedJobs();
+        
+        // Seed initial Adam and Eve
         SeedInitialData();
     }
     
     private void SeedInitialData()
     {
-        // Seed jobs
-        SeedJobs();
-        
         // Set current date to year 20 so Adam and Eve start at age 20
         _currentDate = new DateTime(21, 1, 1);
         
@@ -107,71 +110,71 @@ public class Simulator
     {
         var jobsData = new[]
         {
-            // Basic jobs (no requirements)
-            ("Farmer", 20, 40, 12, 10m, 1, 1.0, false, null),
-            ("Hunter", 30, 60, 14, 15m, 2, 1.5, false, null),
-            ("Gatherer", 20, 30, 12, 8m, 1, 0.8, false, null),
-            ("Fisherman", 25, 50, 14, 12m, 2, 1.2, false, null),
-            ("Shepherd", 20, 40, 12, 10m, 1, 0.9, false, null),
-            ("Builder", 30, 70, 16, 20m, 3, 1.3, false, null),
-            ("Servant", 15, 25, 12, 5m, 0, 0.9, false, null),
+            // Basic jobs (no requirements) - LOWERED REQUIREMENTS for realism
+            ("Farmer", 10, 20, 12, 10m, 1, 1.0, false, null),
+            ("Hunter", 15, 30, 14, 15m, 2, 1.5, false, null),
+            ("Gatherer", 10, 15, 12, 8m, 1, 0.8, false, null),
+            ("Fisherman", 12, 25, 14, 12m, 2, 1.2, false, null),
+            ("Shepherd", 10, 20, 12, 10m, 1, 0.9, false, null),
+            ("Builder", 15, 35, 16, 20m, 3, 1.3, false, null),
+            ("Servant", 8, 12, 12, 5m, 0, 0.9, false, null),
             
             // Crafts requiring inventions
-            ("Potter", 40, 30, 16, 18m, 3, 0.9, true, "Pottery"),
-            ("Weaver", 35, 30, 16, 16m, 3, 0.8, true, "Weaving"),
-            ("Tanner", 30, 40, 16, 15m, 2, 1.0, true, "Tanning"),
-            ("Glassmaker", 60, 40, 18, 35m, 5, 1.2, true, "Glassmaking"),
+            ("Potter", 20, 15, 16, 18m, 3, 0.9, true, "Pottery"),
+            ("Weaver", 18, 15, 16, 16m, 3, 0.8, true, "Weaving"),
+            ("Tanner", 15, 20, 16, 15m, 2, 1.0, true, "Tanning"),
+            ("Glassmaker", 30, 20, 18, 35m, 5, 1.2, true, "Glassmaking"),
             
             // Metallurgy jobs
-            ("Copper Smith", 50, 70, 18, 28m, 4, 1.4, true, "Copper Working"),
-            ("Bronze Smith", 55, 75, 18, 32m, 5, 1.5, true, "Bronze"),
-            ("Iron Smith", 60, 80, 18, 38m, 6, 1.6, true, "Iron Working"),
-            ("Blacksmith", 65, 80, 18, 42m, 6, 1.6, true, "Steel"),
-            ("Goldsmith", 70, 50, 20, 50m, 7, 1.0, true, "Gold Working"),
+            ("Copper Smith", 25, 35, 18, 28m, 4, 1.4, true, "Copper Working"),
+            ("Bronze Smith", 28, 38, 18, 32m, 5, 1.5, true, "Bronze"),
+            ("Iron Smith", 30, 40, 18, 38m, 6, 1.6, true, "Iron Working"),
+            ("Blacksmith", 32, 40, 18, 42m, 6, 1.6, true, "Steel"),
+            ("Goldsmith", 35, 25, 20, 50m, 7, 1.0, true, "Gold Working"),
             
             // Professional jobs
-            ("Merchant", 60, 20, 18, 35m, 5, 0.9, false, null),
-            ("Scribe", 80, 10, 20, 30m, 6, 0.6, true, "Writing"),
-            ("Priest", 70, 10, 20, 30m, 7, 0.7, false, null),
-            ("Healer", 75, 20, 20, 40m, 6, 0.8, true, "Herbal Medicine"),
-            ("Physician", 85, 20, 22, 55m, 8, 0.7, true, "Surgery"),
-            ("Scholar", 85, 10, 22, 35m, 7, 0.6, true, "Writing"),
-            ("Teacher", 75, 10, 20, 28m, 6, 0.6, true, "Writing"),
+            ("Merchant", 30, 10, 18, 35m, 5, 0.9, false, null),
+            ("Scribe", 40, 8, 20, 30m, 6, 0.6, true, "Writing"),
+            ("Priest", 35, 8, 20, 30m, 7, 0.7, false, null),
+            ("Healer", 38, 10, 20, 40m, 6, 0.8, true, "Herbal Medicine"),
+            ("Physician", 42, 10, 22, 55m, 8, 0.7, true, "Surgery"),
+            ("Scholar", 42, 8, 22, 35m, 7, 0.6, true, "Writing"),
+            ("Teacher", 38, 8, 20, 28m, 6, 0.6, true, "Writing"),
             
             // Engineering and Architecture
-            ("Architect", 80, 40, 22, 60m, 8, 0.8, true, "Architecture"),
-            ("Engineer", 85, 50, 22, 65m, 8, 1.0, true, "Mathematics"),
-            ("Mason", 40, 75, 16, 22m, 3, 1.4, true, "Brick Making"),
+            ("Architect", 40, 20, 22, 60m, 8, 0.8, true, "Architecture"),
+            ("Engineer", 42, 25, 22, 65m, 8, 1.0, true, "Mathematics"),
+            ("Mason", 20, 38, 16, 22m, 3, 1.4, true, "Brick Making"),
             
             // Arts
-            ("Artist", 60, 20, 18, 25m, 4, 0.7, true, "Painting"),
-            ("Sculptor", 65, 40, 18, 28m, 5, 0.8, true, "Sculpture"),
-            ("Musician", 50, 20, 16, 20m, 4, 0.7, true, "Music"),
-            ("Poet", 70, 10, 18, 22m, 5, 0.6, true, "Poetry"),
+            ("Artist", 30, 10, 18, 25m, 4, 0.7, true, "Painting"),
+            ("Sculptor", 32, 20, 18, 28m, 5, 0.8, true, "Sculpture"),
+            ("Musician", 25, 10, 16, 20m, 4, 0.7, true, "Music"),
+            ("Poet", 35, 8, 18, 22m, 5, 0.6, true, "Poetry"),
             
             // Labor
-            ("Miner", 25, 85, 16, 25m, 3, 2.5, false, null),
-            ("Quarryman", 25, 80, 16, 22m, 2, 2.3, false, null),
-            ("Laborer", 15, 60, 14, 8m, 1, 1.5, false, null),
+            ("Miner", 12, 42, 16, 25m, 3, 2.5, false, null),
+            ("Quarryman", 12, 40, 16, 22m, 2, 2.3, false, null),
+            ("Laborer", 8, 30, 14, 8m, 1, 1.5, false, null),
             
             // Food production
-            ("Baker", 30, 30, 14, 12m, 2, 0.8, true, "Bread Baking"),
-            ("Brewer", 35, 30, 16, 15m, 2, 0.8, true, "Beer Brewing"),
-            ("Cook", 30, 30, 14, 12m, 2, 0.8, false, null),
-            ("Butcher", 25, 50, 14, 14m, 2, 1.0, false, null),
+            ("Baker", 15, 15, 14, 12m, 2, 0.8, true, "Bread Baking"),
+            ("Brewer", 18, 15, 16, 15m, 2, 0.8, true, "Beer Brewing"),
+            ("Cook", 15, 15, 14, 12m, 2, 0.8, false, null),
+            ("Butcher", 12, 25, 14, 14m, 2, 1.0, false, null),
             
             // Transportation
-            ("Carter", 25, 50, 16, 16m, 2, 1.1, true, "Cart"),
-            ("Sailor", 35, 60, 16, 20m, 3, 1.8, true, "Ship"),
-            ("Charioteer", 40, 65, 18, 25m, 4, 1.5, true, "Chariot"),
+            ("Carter", 12, 25, 16, 16m, 2, 1.1, true, "Cart"),
+            ("Sailor", 18, 30, 16, 20m, 3, 1.8, true, "Ship"),
+            ("Charioteer", 20, 32, 18, 25m, 4, 1.5, true, "Chariot"),
             
             // Military (only available after wars start - handled separately)
-            ("Warrior", 40, 80, 16, 20m, 5, 3.0, false, null), // Will be restricted by logic
-            ("Guard", 35, 70, 18, 18m, 4, 1.8, false, null),
-            ("Archer", 45, 60, 16, 22m, 5, 2.0, true, "Bow and Arrow"),
+            ("Warrior", 20, 40, 16, 20m, 5, 3.0, false, null), // Will be restricted by logic
+            ("Guard", 18, 35, 18, 18m, 4, 1.8, false, null),
+            ("Archer", 22, 30, 16, 22m, 5, 2.0, true, "Bow and Arrow"),
             
             // Leadership
-            ("Leader", 75, 50, 25, 100m, 10, 1.0, false, null)
+            ("Leader", 38, 25, 25, 100m, 10, 1.0, false, null)
         };
         
         foreach (var (name, intel, str, age, salary, status, risk, requiresInv, invName) in jobsData)
@@ -193,7 +196,15 @@ public class Simulator
             _jobsById[job.Id] = job;
         }
         
+        // Save jobs to database (this updates their IDs to database auto-increment values)
         _dataAccess.SaveJobs(_jobs);
+        
+        // Rebuild the _jobsById dictionary with the new database IDs
+        _jobsById.Clear();
+        foreach (var job in _jobs)
+        {
+            _jobsById[job.Id] = job;
+        }
     }
     
     private Person CreatePerson(string firstName, string lastName, string gender, long? fatherId, long? motherId)
@@ -432,11 +443,19 @@ public class Simulator
     
     private void AssignJobs()
     {
-        // Track which inventions have been discovered (use HashSet for O(1) lookup)
-        var discoveredInventionNames = _inventions.Select(i => i.Name).ToHashSet();
+        // Get list of people who need jobs (alive, old enough, no current job)
+        var peopleNeedingJobs = _people
+            .Where(p => p.IsAlive && p.GetAge(_currentDate) >= 12 && !p.JobId.HasValue)
+            .ToList();
         
-        // Job-invention mapping for quick lookup
-        var jobInventionMap = new Dictionary<string, string>
+        if (peopleNeedingJobs.Count == 0) return;
+        
+        // Build set of discovered inventions for quick lookup
+        var discoveredInventions = _inventions.Select(i => i.Name).ToHashSet();
+        bool hasActiveWars = _wars.Count > 0;
+        
+        // Map job names to required inventions
+        var jobInventionRequirements = new Dictionary<string, string>
         {
             { "Potter", "Pottery" },
             { "Weaver", "Weaving" },
@@ -467,61 +486,62 @@ public class Simulator
             { "Archer", "Bow and Arrow" }
         };
         
-        bool hasWars = _wars.Count > 0;
-        
-        // Single pass through people
-        foreach (var person in _people)
+        // Assign jobs to each eligible person
+        foreach (var person in peopleNeedingJobs)
         {
-            if (!person.IsEligibleForJob(_currentDate)) continue;
+            Job? assignedJob = null;
+            int bestFitScore = int.MinValue;
             
-            int personAge = person.GetAge(_currentDate);
-            int personIntelligence = person.Intelligence;
-            int personStrength = person.Strength;
-            
-            // Find best suitable job
-            Job? bestJob = null;
-            int bestScore = -1;
-            
+            // Find the best job match for this person
             foreach (var job in _jobs)
             {
-                // Check basic requirements
-                if (personIntelligence < job.MinIntelligence) continue;
-                if (personStrength < job.MinStrength) continue;
-                if (personAge < job.MinAge) continue;
+                // Check age requirement
+                if (person.GetAge(_currentDate) < job.MinAge) continue;
                 
-                // Check if job requires an invention
+                // Check intelligence requirement
+                if (person.Intelligence < job.MinIntelligence) continue;
+                
+                // Check strength requirement
+                if (person.Strength < job.MinStrength) continue;
+                
+                // Check if job requires an invention that hasn't been discovered
                 if (job.RequiresInvention)
                 {
-                    if (jobInventionMap.TryGetValue(job.Name, out var requiredInvention))
+                    if (jobInventionRequirements.TryGetValue(job.Name, out var requiredInvention))
                     {
-                        if (!discoveredInventionNames.Contains(requiredInvention))
+                        if (!discoveredInventions.Contains(requiredInvention))
                             continue;
                     }
                 }
                 
-                // Restrict military jobs until wars exist
-                if ((job.Name == "Warrior" || job.Name == "Archer") && !hasWars)
+                // Military jobs require active wars
+                if ((job.Name == "Warrior" || job.Name == "Guard" || job.Name == "Archer") && !hasActiveWars)
                     continue;
                 
-                // Calculate job fit score
-                int score = (personIntelligence - job.MinIntelligence) + 
-                           (personStrength - job.MinStrength);
+                // Calculate fit score (how well person exceeds requirements)
+                int fitScore = (person.Intelligence - job.MinIntelligence) + 
+                              (person.Strength - job.MinStrength);
                 
-                if (score > bestScore)
+                // This person qualifies and has a better fit than previous options
+                if (fitScore > bestFitScore)
                 {
-                    bestScore = score;
-                    bestJob = job;
+                    bestFitScore = fitScore;
+                    assignedJob = job;
                 }
             }
             
-            if (bestJob != null)
+            // Assign the best job found
+            if (assignedJob != null)
             {
-                person.JobId = bestJob.Id;
+                person.JobId = assignedJob.Id;
                 person.JobStartDate = _currentDate;
-                person.SocialStatus += bestJob.SocialStatusBonus;
+                person.SocialStatus += assignedJob.SocialStatusBonus;
                 
-                if (_random.Next(10) == 0) // Log 10% of job assignments
-                    LogEvent("Job", $"{person.FirstName} {person.LastName} became a {bestJob.Name}", person.Id);
+                // Log some job assignments (10% to avoid spam)
+                if (_random.Next(100) < 10)
+                {
+                    LogEvent("Job", $"{person.FirstName} {person.LastName} became a {assignedJob.Name}", person.Id);
+                }
             }
         }
     }
@@ -667,7 +687,19 @@ public class Simulator
             if (person.IsPregnant && person.PregnancyDueDate.HasValue && 
                 person.PregnancyDueDate.Value <= _currentDate)
             {
-                duePregnancies.Add(person);
+                // Only process if mother is still alive
+                if (person.IsAlive)
+                {
+                    duePregnancies.Add(person);
+                }
+                else
+                {
+                    // Mother died while pregnant - unborn child dies too
+                    person.IsPregnant = false;
+                    person.PregnancyDueDate = null;
+                    person.PregnancyFatherId = null;
+                    person.PregnancyMultiplier = 1;
+                }
             }
         }
         
@@ -727,7 +759,7 @@ public class Simulator
                 // Update global generation counter
                 _generationNumber = Math.Max(_generationNumber, childGeneration);
                 
-                // Don't use "Unknown" as father name - use empty string so naming logic falls through correctly
+                // Use father's name for patronymic, or mother's last name as fallback
                 string fatherName = father?.FirstName ?? string.Empty;
                 long? fatherId = father?.Id;
                 string cityName = mother.CityId.HasValue && _citiesById.ContainsKey(mother.CityId.Value) 
@@ -739,6 +771,12 @@ public class Simulator
                 
                 // Use global generation number for naming convention, not child's individual generation
                 string lastName = _nameGenerator.GenerateLastName(fatherName, cityName, jobName, _generationNumber);
+                
+                // If lastName is "Unknown", use mother's last name instead
+                if (lastName == "Unknown" && !string.IsNullOrEmpty(mother.LastName))
+                {
+                    lastName = mother.LastName;
+                }
                 
                 var child = CreatePerson(firstName, lastName, gender, fatherId, mother.Id);
                 AddPerson(child);
@@ -1028,6 +1066,50 @@ public class Simulator
     {
         var livingPeople = GetLivingPeople();
         
+        // Check if simulation has ended
+        bool simulationEnded = false;
+        string? endReason = null;
+        
+        if (livingPeople.Count == 0)
+        {
+            simulationEnded = true;
+            endReason = "All people have died. The civilization has ended.";
+        }
+        else
+        {
+            // Check for breeding-age females
+            var breedingFemales = livingPeople.Count(p => 
+                p.Gender == "Female" && p.GetAge(_currentDate) >= 16 && p.GetAge(_currentDate) <= 45);
+            
+            // Check for young females who might reach breeding age
+            var youngFemales = livingPeople.Count(p => 
+                p.Gender == "Female" && p.GetAge(_currentDate) < 16);
+            
+            if (breedingFemales == 0 && youngFemales == 0)
+            {
+                simulationEnded = true;
+                endReason = "No females of breeding age remain and no young females to continue the population. The civilization has ended.";
+            }
+            else if (breedingFemales == 0 && youngFemales > 0)
+            {
+                // Check if there are any males who could breed with future females
+                var breedingMales = livingPeople.Count(p => 
+                    p.Gender == "Male" && p.GetAge(_currentDate) >= 16 && p.GetAge(_currentDate) <= 60);
+                var youngMales = livingPeople.Count(p => 
+                    p.Gender == "Male" && p.GetAge(_currentDate) < 16);
+                
+                if (breedingMales == 0 && youngMales == 0)
+                {
+                    simulationEnded = true;
+                    endReason = "No males of breeding age remain and no young males to continue the population. The civilization will end.";
+                }
+            }
+        }
+        
+        // Calculate gender distribution
+        var maleCount = livingPeople.Count(p => p.Gender == "Male");
+        var femaleCount = livingPeople.Count(p => p.Gender == "Female");
+        
         return new SimulationStats
         {
             CurrentDate = _currentDate,
@@ -1042,6 +1124,10 @@ public class Simulator
             TotalInventions = _inventions.Count,
             TotalWars = _wars.Count,
             GenerationNumber = _generationNumber,
+            SimulationEnded = simulationEnded,
+            EndReason = endReason,
+            MaleCount = maleCount,
+            FemaleCount = femaleCount,
             RecentEvents = _recentEvents.TakeLast(10).ToList(),
             TopJobs = GetTopJobs(),
             FamilyTrees = GetActiveFamilyTrees()
@@ -1052,37 +1138,58 @@ public class Simulator
     {
         var livingPeople = GetLivingPeople();
         
-        var jobStats = livingPeople
-            .Where(p => p.JobId.HasValue)
-            .GroupBy(p => p.JobId!.Value)
-            .Select(g => new JobStatistic
-            {
-                JobName = _jobsById.ContainsKey(g.Key) ? _jobsById[g.Key].Name : "Unknown",
-                Count = g.Count()
-            })
-            .OrderByDescending(j => j.Count)
-            .Take(5)
-            .ToList();
+        // Group people by their job
+        var jobGroups = new Dictionary<string, int>();
         
-        return jobStats;
+        foreach (var person in livingPeople)
+        {
+            string jobName = !person.JobId.HasValue ? "Unemployed" 
+                : (_jobsById.ContainsKey(person.JobId.Value) ? _jobsById[person.JobId.Value].Name : "Unknown");
+            
+            if (!jobGroups.ContainsKey(jobName))
+                jobGroups[jobName] = 0;
+            jobGroups[jobName]++;
+        }
+        
+        // Convert to list and return top 10
+        return jobGroups
+            .Select(kvp => new JobStatistic { JobName = kvp.Key, Count = kvp.Value })
+            .OrderByDescending(j => j.Count)
+            .Take(10)
+            .ToList();
     }
     
     private List<FamilyTreeNode> GetActiveFamilyTrees()
     {
         var trees = new List<FamilyTreeNode>();
-        var livingPeople = GetLivingPeople();
         
-        // Find male roots - people with no parents who have living descendants
+        // Always try to show Adam's tree first (if we have Adam ID saved)
+        if (_adamId.HasValue)
+        {
+            Person? adam = null;
+            if (_peopleById.ContainsKey(_adamId.Value))
+                adam = _peopleById[_adamId.Value];
+            else if (_deadPeopleById.ContainsKey(_adamId.Value))
+                adam = _deadPeopleById[_adamId.Value];
+            
+            if (adam != null)
+            {
+                trees.Add(BuildFamilyTreeNode(adam));
+                return trees;
+            }
+        }
+        
+        // Fallback: Find male roots - people with no parents
         var roots = _people.Where(p => 
             !p.FatherId.HasValue && 
             !p.MotherId.HasValue &&
-            p.Gender == "Male" &&
-            HasLivingDescendants(p.Id)
+            p.Gender == "Male"
         ).ToList();
         
-        // If Adam is dead, find male children with most descendants
-        if (roots.Count == 0 || roots.All(r => !r.IsAlive))
+        // If no roots, find male children with most descendants
+        if (roots.Count == 0)
         {
+            var livingPeople = GetLivingPeople();
             var potentialRoots = livingPeople
                 .Where(p => p.Gender == "Male" && HasLivingDescendants(p.Id))
                 .OrderByDescending(p => CountLivingDescendants(p.Id))
@@ -1195,6 +1302,10 @@ public class SimulationStats
     public int TotalInventions { get; set; }
     public int TotalWars { get; set; }
     public int GenerationNumber { get; set; }
+    public bool SimulationEnded { get; set; }
+    public string? EndReason { get; set; }
+    public int MaleCount { get; set; }
+    public int FemaleCount { get; set; }
     public List<Event> RecentEvents { get; set; } = new();
     public List<JobStatistic> TopJobs { get; set; } = new();
     public List<FamilyTreeNode> FamilyTrees { get; set; } = new();

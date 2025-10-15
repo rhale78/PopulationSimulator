@@ -1,6 +1,16 @@
 # Advanced Population Simulator
 
-A comprehensive .NET 9 console application that simulates the emergence and evolution of human society from a single pair of individuals (Adam and Eve) through multiple generations.
+A comprehensive .NET 9 application that simulates the emergence and evolution of human society from a single pair of individuals (Adam and Eve) through multiple generations. Available in both **console mode** (terminal-based) and **web mode** (browser-based).
+
+## Available Modes
+
+### 🖥️ Console Mode
+Terminal-based interface using RazorConsole and Spectre.Console for a rich console experience.
+
+### 🌐 Web Mode (New!)
+Modern web-based interface using Blazor Server with real-time updates and responsive design.
+
+Both modes provide the complete simulation experience with all features!
 
 ## Features
 
@@ -37,6 +47,7 @@ A comprehensive .NET 9 console application that simulates the emergence and evol
 
 - .NET 9.0 SDK or later
 - Windows, Linux, or macOS
+- Modern web browser (for web mode)
 
 ## Installation
 
@@ -48,26 +59,63 @@ cd PopulationSimulator
 
 2. Build the project:
 ```bash
-cd PopulationSimulator
 dotnet build
 ```
 
 ## Usage
 
-Run the simulator:
+### Web Mode (Recommended)
+
+Run the web-based simulator:
 ```bash
+cd PopulationSimulator.Web
 dotnet run
 ```
 
-### Controls
+Then open your browser to `https://localhost:5001` (or the URL shown in console).
+
+**Features:**
+- Real-time updates with automatic refresh
+- Interactive speed controls
+- Responsive design works on desktop and mobile
+- Clean, modern interface
+
+### Console Mode
+
+Run the terminal-based simulator:
+```bash
+cd PopulationSimulator.Console
+dotnet run
+```
+
+**Controls:**
 - Press any key at the welcome screen to start
-- `+` or `=` - Increase simulation speed
-- `-` - Decrease simulation speed
-- `Q` - Quit and save to database
+- Tab - Switch focus between controls
+- Enter - Activate focused button
+- Ctrl+C - Quit and save to database
+
+See [WEB_README.md](WEB_README.md) for detailed documentation on both modes.
 
 ## Architecture
 
 ### Project Structure
+```
+PopulationSimulator/
+├── PopulationSimulator.Shared/   # Shared library
+│   ├── Models/                   # Data models
+│   ├── Core/                     # Simulation logic
+│   ├── Data/                     # Database access
+│   └── Services/                 # Simulation service
+├── PopulationSimulator.Console/  # Console mode
+│   ├── Components/               # RazorConsole components
+│   └── Program.cs                # Console entry point
+└── PopulationSimulator.Web/      # Web mode
+    ├── Components/               # Blazor components
+    ├── Pages/                    # Blazor pages
+    └── Program.cs                # Web entry point
+```
+
+### Project Structure (Old)
 ```
 PopulationSimulator/
 ├── Models/          # Data models (Person, City, Country, Religion, etc.)
@@ -81,9 +129,9 @@ PopulationSimulator/
 
 - **Person**: Represents an individual with traits, relationships, and life events
 - **Simulator**: Main simulation engine orchestrating all game logic
+- **SimulatorService**: Service layer that manages simulation lifecycle and provides event-based updates
 - **NameGenerator**: Generates culturally appropriate names for people, places, and entities
 - **DataAccessLayer**: Handles all database operations with SQLite
-- **ConsoleUI**: Real-time console interface with statistics and events
 
 ### Simulation Flow
 

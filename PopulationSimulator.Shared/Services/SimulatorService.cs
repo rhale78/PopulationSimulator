@@ -4,7 +4,7 @@ namespace PopulationSimulator.Services;
 
 public class SimulatorService
 {
-    private readonly Simulator _simulator;
+    private Simulator _simulator;
     private int _simulationSpeed = 1;
     private bool _running = true;
     private DateTime _lastUIUpdate = DateTime.Now;
@@ -12,11 +12,33 @@ public class SimulatorService
     
     public event Action<SimulationStats>? OnStatsUpdated;
     public event Action<int>? OnSpeedChanged;
+    public event Action? OnSimulationRestarted;
     
     public SimulatorService()
     {
         _simulator = new Simulator();
         _simulator.Initialize();
+    }
+    
+    public void Restart()
+    {
+        _running = false;
+        Thread.Sleep(100); // Give the simulation loop time to stop
+        
+        // Create new simulator instance
+        _simulator = new Simulator();
+        _simulator.Initialize();
+        
+        // Reset speed
+        _simulationSpeed = 1;
+        _running = true;
+        
+        // Notify UI of restart
+        OnSimulationRestarted?.Invoke();
+        OnSpeedChanged?.Invoke(_simulationSpeed);
+        
+        // Restart the simulation loop
+        Start();
     }
     
     public void Start()
@@ -25,13 +47,14 @@ public class SimulatorService
         {
             while (_running)
             {
+                // Process simulation days based on speed
                 for (int i = 0; i < _simulationSpeed; i++)
                 {
                     _simulator.SimulateDay();
                 }
                 
                 // Throttle UI updates to prevent screen corruption
-                // Only update UI every 500ms instead of every 50ms
+                // Only update UI every 500ms
                 if ((DateTime.Now - _lastUIUpdate).TotalMilliseconds >= 500)
                 {
                     lock (_updateLock)
@@ -42,7 +65,10 @@ public class SimulatorService
                     }
                 }
                 
-                await Task.Delay(50); // Simulation tick rate
+                // At speed 1, simulate 1 day per second (1000ms delay)
+                // At higher speeds, delay decreases but never below 50ms
+                int delay = Math.Max(50, 1000 / _simulationSpeed);
+                await Task.Delay(delay);
             }
         });
     }
