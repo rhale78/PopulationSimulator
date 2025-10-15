@@ -667,7 +667,19 @@ public class Simulator
             if (person.IsPregnant && person.PregnancyDueDate.HasValue && 
                 person.PregnancyDueDate.Value <= _currentDate)
             {
-                duePregnancies.Add(person);
+                // Only process if mother is still alive
+                if (person.IsAlive)
+                {
+                    duePregnancies.Add(person);
+                }
+                else
+                {
+                    // Mother died while pregnant - unborn child dies too
+                    person.IsPregnant = false;
+                    person.PregnancyDueDate = null;
+                    person.PregnancyFatherId = null;
+                    person.PregnancyMultiplier = 1;
+                }
             }
         }
         
@@ -727,7 +739,7 @@ public class Simulator
                 // Update global generation counter
                 _generationNumber = Math.Max(_generationNumber, childGeneration);
                 
-                // Don't use "Unknown" as father name - use empty string so naming logic falls through correctly
+                // Use father's name for patronymic, or mother's last name as fallback
                 string fatherName = father?.FirstName ?? string.Empty;
                 long? fatherId = father?.Id;
                 string cityName = mother.CityId.HasValue && _citiesById.ContainsKey(mother.CityId.Value) 
@@ -739,6 +751,12 @@ public class Simulator
                 
                 // Use global generation number for naming convention, not child's individual generation
                 string lastName = _nameGenerator.GenerateLastName(fatherName, cityName, jobName, _generationNumber);
+                
+                // If lastName is "Unknown", use mother's last name instead
+                if (lastName == "Unknown" && !string.IsNullOrEmpty(mother.LastName))
+                {
+                    lastName = mother.LastName;
+                }
                 
                 var child = CreatePerson(firstName, lastName, gender, fatherId, mother.Id);
                 AddPerson(child);
@@ -1028,6 +1046,50 @@ public class Simulator
     {
         var livingPeople = GetLivingPeople();
         
+        // Check if simulation has ended
+        bool simulationEnded = false;
+        string? endReason = null;
+        
+        if (livingPeople.Count == 0)
+        {
+            simulationEnded = true;
+            endReason = "All people have died. The civilization has ended.";
+        }
+        else
+        {
+            // Check for breeding-age females
+            var breedingFemales = livingPeople.Count(p => 
+                p.Gender == "Female" && p.GetAge(_currentDate) >= 16 && p.GetAge(_currentDate) <= 45);
+            
+            // Check for young females who might reach breeding age
+            var youngFemales = livingPeople.Count(p => 
+                p.Gender == "Female" && p.GetAge(_currentDate) < 16);
+            
+            if (breedingFemales == 0 && youngFemales == 0)
+            {
+                simulationEnded = true;
+                endReason = "No females of breeding age remain and no young females to continue the population. The civilization has ended.";
+            }
+            else if (breedingFemales == 0 && youngFemales > 0)
+            {
+                // Check if there are any males who could breed with future females
+                var breedingMales = livingPeople.Count(p => 
+                    p.Gender == "Male" && p.GetAge(_currentDate) >= 16 && p.GetAge(_currentDate) <= 60);
+                var youngMales = livingPeople.Count(p => 
+                    p.Gender == "Male" && p.GetAge(_currentDate) < 16);
+                
+                if (breedingMales == 0 && youngMales == 0)
+                {
+                    simulationEnded = true;
+                    endReason = "No males of breeding age remain and no young males to continue the population. The civilization will end.";
+                }
+            }
+        }
+        
+        // Calculate gender distribution
+        var maleCount = livingPeople.Count(p => p.Gender == "Male");
+        var femaleCount = livingPeople.Count(p => p.Gender == "Female");
+        
         return new SimulationStats
         {
             CurrentDate = _currentDate,
@@ -1042,6 +1104,10 @@ public class Simulator
             TotalInventions = _inventions.Count,
             TotalWars = _wars.Count,
             GenerationNumber = _generationNumber,
+            SimulationEnded = simulationEnded,
+            EndReason = endReason,
+            MaleCount = maleCount,
+            FemaleCount = femaleCount,
             RecentEvents = _recentEvents.TakeLast(10).ToList(),
             TopJobs = GetTopJobs(),
             FamilyTrees = GetActiveFamilyTrees()
@@ -1052,7 +1118,8 @@ public class Simulator
     {
         var livingPeople = GetLivingPeople();
         
-        var jobStats = livingPeople
+        // Get people with jobs
+        var withJobs = livingPeople
             .Where(p => p.JobId.HasValue)
             .GroupBy(p => p.JobId!.Value)
             .Select(g => new JobStatistic
@@ -1064,7 +1131,18 @@ public class Simulator
             .Take(5)
             .ToList();
         
-        return jobStats;
+        // Add people without jobs as "Unemployed"
+        var withoutJobs = livingPeople.Count(p => !p.JobId.HasValue);
+        if (withoutJobs > 0)
+        {
+            withJobs.Add(new JobStatistic
+            {
+                JobName = "Unemployed",
+                Count = withoutJobs
+            });
+        }
+        
+        return withJobs.OrderByDescending(j => j.Count).Take(5).ToList();
     }
     
     private List<FamilyTreeNode> GetActiveFamilyTrees()
@@ -1195,6 +1273,10 @@ public class SimulationStats
     public int TotalInventions { get; set; }
     public int TotalWars { get; set; }
     public int GenerationNumber { get; set; }
+    public bool SimulationEnded { get; set; }
+    public string? EndReason { get; set; }
+    public int MaleCount { get; set; }
+    public int FemaleCount { get; set; }
     public List<Event> RecentEvents { get; set; } = new();
     public List<JobStatistic> TopJobs { get; set; } = new();
     public List<FamilyTreeNode> FamilyTrees { get; set; } = new();
