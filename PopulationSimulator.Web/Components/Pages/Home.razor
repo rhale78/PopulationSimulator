@@ -307,7 +307,7 @@
 </div>
 
 @code {
-    private SimulationStats _stats = new();
+    private SimulationStats _stats = new() { CurrentYear = 1, CurrentDayOfYear = 1 };
     private int _simulationSpeed = 1;
 
     protected override void OnInitialized()
@@ -334,7 +334,7 @@
 
     private void HandleSimulationRestarted()
     {
-        _stats = new SimulationStats();
+        _stats = new SimulationStats() { CurrentYear = 1, CurrentDayOfYear = 1 };
         _simulationSpeed = 1;
         InvokeAsync(StateHasChanged);
     }

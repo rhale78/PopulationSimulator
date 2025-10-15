@@ -1183,14 +1183,22 @@ public class Simulator
     
     private void SyncToDatabase()
     {
-        _dataAccess.SavePeople(_people);
-        _dataAccess.SaveCities(_cities);
-        _dataAccess.SaveCountries(_countries);
-        _dataAccess.SaveReligions(_religions);
-        _dataAccess.SaveInventions(_inventions);
-        _dataAccess.SaveWars(_wars);
-        _dataAccess.SaveDynasties(_dynasties);
-        _dataAccess.SaveEvents(_recentEvents);
+        try
+        {
+            _dataAccess.SavePeople(_people);
+            _dataAccess.SaveCities(_cities);
+            _dataAccess.SaveCountries(_countries);
+            _dataAccess.SaveReligions(_religions);
+            _dataAccess.SaveInventions(_inventions);
+            _dataAccess.SaveWars(_wars);
+            _dataAccess.SaveDynasties(_dynasties);
+            _dataAccess.SaveEvents(_recentEvents);
+        }
+        catch (Exception ex)
+        {
+            // Log error but don't stop simulation
+            Console.WriteLine($"Database sync error: {ex.Message}");
+        }
     }
     
     public SimulationStats GetStats()

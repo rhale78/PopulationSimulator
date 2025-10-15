@@ -45,30 +45,39 @@ public class SimulatorService
     {
         Task.Run(async () =>
         {
-            while (_running)
+            try
             {
-                // Process simulation days based on speed
-                for (int i = 0; i < _simulationSpeed; i++)
+                while (_running)
                 {
-                    _simulator.SimulateDay();
-                }
-                
-                // Throttle UI updates to prevent screen corruption
-                // Only update UI every 500ms
-                if ((DateTime.Now - _lastUIUpdate).TotalMilliseconds >= 500)
-                {
-                    lock (_updateLock)
+                    // Process simulation days based on speed
+                    for (int i = 0; i < _simulationSpeed; i++)
                     {
-                        var stats = _simulator.GetStats();
-                        OnStatsUpdated?.Invoke(stats);
-                        _lastUIUpdate = DateTime.Now;
+                        _simulator.SimulateDay();
                     }
+                    
+                    // Throttle UI updates to prevent screen corruption
+                    // Only update UI every 500ms
+                    if ((DateTime.Now - _lastUIUpdate).TotalMilliseconds >= 500)
+                    {
+                        lock (_updateLock)
+                        {
+                            var stats = _simulator.GetStats();
+                            OnStatsUpdated?.Invoke(stats);
+                            _lastUIUpdate = DateTime.Now;
+                        }
+                    }
+                    
+                    // At speed 1, simulate 1 day per second (1000ms delay)
+                    // At higher speeds, delay decreases but never below 50ms
+                    int delay = Math.Max(50, 1000 / _simulationSpeed);
+                    await Task.Delay(delay);
                 }
-                
-                // At speed 1, simulate 1 day per second (1000ms delay)
-                // At higher speeds, delay decreases but never below 50ms
-                int delay = Math.Max(50, 1000 / _simulationSpeed);
-                await Task.Delay(delay);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Simulation error: {ex.Message}");
+                Console.WriteLine(ex.StackTrace);
+                _running = false;
             }
         });
     }

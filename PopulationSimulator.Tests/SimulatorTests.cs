@@ -158,4 +158,24 @@ public class SimulatorTests
             Assert.NotEmpty(stats.TopJobs);
         }
     }
+    
+    [Fact]
+    public void SimulateDay_ContinuesPast100Days()
+    {
+        // Arrange
+        var simulator = new Simulator();
+        simulator.Initialize();
+        
+        // Act - Simulate 150 days to test past the SYNC_INTERVAL of 100
+        for (int i = 0; i < 150; i++)
+        {
+            simulator.SimulateDay();
+        }
+        
+        var stats = simulator.GetStats();
+        
+        // Assert
+        Assert.True(stats.CurrentDay >= 7300 + 150, $"Expected day >= {7300 + 150}, got {stats.CurrentDay}");
+        Assert.Equal(2, stats.LivingPopulation); // Adam and Eve should still be alive
+    }
 }
