@@ -34,12 +34,74 @@
 
     <CivilizationPanel Stats="@_stats" />
 
+    <DetailListsPanel Stats="@_stats" />
+
     @if (_stats.FamilyTrees.Any())
     {
         <FamilyTreePanel FamilyTree="@_stats.FamilyTrees.First()" />
     }
 
     <RecentEventsPanel Events="@_stats.RecentEvents" />
+
+    <Panel Title="RECENT BIRTHS/DEATHS/MARRIAGES" 
+           BorderColor="@Color.Grey" 
+           Border="BoxBorder.Rounded"
+           Expand="true"
+           Height="10">
+        <Columns>
+            <Rows Title="Births" BorderColor="@Color.Green">
+                @{
+                    var births = _stats.RecentEvents.Where(e => e.EventType == "Birth").TakeLast(3).ToList();
+                    if (!births.Any())
+                    {
+                        <Markup Content="No recent births" Foreground="@Color.Grey" />
+                    }
+                    else
+                    {
+                        @foreach (var evt in births)
+                        {
+                            var text = evt.Description.Length > 35 ? evt.Description.Substring(0, 32) + "..." : evt.Description;
+                            <Markup Content="@text" Foreground="@Color.Green" />
+                        }
+                    }
+                }
+            </Rows>
+            <Rows Title="Deaths" BorderColor="@Color.Red">
+                @{
+                    var deaths = _stats.RecentEvents.Where(e => e.EventType == "Death").TakeLast(3).ToList();
+                    if (!deaths.Any())
+                    {
+                        <Markup Content="No recent deaths" Foreground="@Color.Grey" />
+                    }
+                    else
+                    {
+                        @foreach (var evt in deaths)
+                        {
+                            var text = evt.Description.Length > 35 ? evt.Description.Substring(0, 32) + "..." : evt.Description;
+                            <Markup Content="@text" Foreground="@Color.Red" />
+                        }
+                    }
+                }
+            </Rows>
+            <Rows Title="Marriages" BorderColor="@Color.Yellow">
+                @{
+                    var marriages = _stats.RecentEvents.Where(e => e.EventType == "Marriage").TakeLast(3).ToList();
+                    if (!marriages.Any())
+                    {
+                        <Markup Content="No recent marriages" Foreground="@Color.Grey" />
+                    }
+                    else
+                    {
+                        @foreach (var evt in marriages)
+                        {
+                            var text = evt.Description.Length > 35 ? evt.Description.Substring(0, 32) + "..." : evt.Description;
+                            <Markup Content="@text" Foreground="@Color.Yellow" />
+                        }
+                    }
+                }
+            </Rows>
+        </Columns>
+    </Panel>
 
     <Panel Title="CONTROLS" 
            BorderColor="@Color.Grey" 

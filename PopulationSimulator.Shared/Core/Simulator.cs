@@ -1129,15 +1129,37 @@ public class Simulator
             MaleCount = maleCount,
             FemaleCount = femaleCount,
             RecentEvents = _recentEvents.TakeLast(10).ToList(),
-            TopJobs = GetTopJobs(),
-            FamilyTrees = GetActiveFamilyTrees()
+            TopJobs = GetTopJobs(livingPeople),
+            FamilyTrees = GetActiveFamilyTrees(livingPeople),
+            Cities = _cities.OrderByDescending(c => c.Population).Take(10).Select(c => new CityInfo 
+            { 
+                Name = c.Name, 
+                Population = c.Population, 
+                Year = c.FoundedDate.Year 
+            }).ToList(),
+            Countries = _countries.OrderByDescending(c => c.Population).Take(10).Select(c => new CountryInfo 
+            { 
+                Name = c.Name, 
+                Population = c.Population, 
+                Year = c.FoundedDate.Year 
+            }).ToList(),
+            Religions = _religions.OrderByDescending(r => r.Followers).Take(10).Select(r => new ReligionInfo 
+            { 
+                Name = r.Name, 
+                Followers = r.Followers, 
+                Year = r.FoundedDate.Year 
+            }).ToList(),
+            Inventions = _inventions.OrderBy(i => i.DiscoveredDate).Take(15).Select(i => new InventionInfo 
+            { 
+                Name = i.Name, 
+                Category = i.Category, 
+                Year = i.DiscoveredDate.Year 
+            }).ToList()
         };
     }
     
-    private List<JobStatistic> GetTopJobs()
+    private List<JobStatistic> GetTopJobs(List<Person> livingPeople)
     {
-        var livingPeople = GetLivingPeople();
-        
         // Group people by their job
         var jobGroups = new Dictionary<string, int>();
         
@@ -1159,7 +1181,7 @@ public class Simulator
             .ToList();
     }
     
-    private List<FamilyTreeNode> GetActiveFamilyTrees()
+    private List<FamilyTreeNode> GetActiveFamilyTrees(List<Person> livingPeople)
     {
         var trees = new List<FamilyTreeNode>();
         
@@ -1174,7 +1196,7 @@ public class Simulator
             
             if (adam != null)
             {
-                trees.Add(BuildFamilyTreeNode(adam));
+                trees.Add(BuildFamilyTreeNode(adam, livingPeople));
                 return trees;
             }
         }
@@ -1189,9 +1211,8 @@ public class Simulator
         // If no roots, find male children with most descendants
         if (roots.Count == 0)
         {
-            var livingPeople = GetLivingPeople();
             var potentialRoots = livingPeople
-                .Where(p => p.Gender == "Male" && HasLivingDescendants(p.Id))
+                .Where(p => p.Gender == "Male" && HasLivingDescendants(p.Id, livingPeople))
                 .OrderByDescending(p => CountLivingDescendants(p.Id))
                 .Take(10) // Top 10 most active male lines
                 .ToList();
@@ -1202,17 +1223,14 @@ public class Simulator
         // Build tree for each root (limit to top 1 tree to prevent overflow)
         foreach (var root in roots.Take(1))
         {
-            trees.Add(BuildFamilyTreeNode(root));
+            trees.Add(BuildFamilyTreeNode(root, livingPeople));
         }
         
         return trees;
     }
     
-    private bool HasLivingDescendants(long personId)
+    private bool HasLivingDescendants(long personId, List<Person> livingPeople)
     {
-        // Use cached living people for better performance
-        var livingPeople = GetLivingPeople();
-        
         // Check if any living person has this person as parent
         if (livingPeople.Any(p => p.FatherId == personId || p.MotherId == personId))
             return true;
@@ -1221,7 +1239,7 @@ public class Simulator
         var children = _people.Where(p => p.FatherId == personId || p.MotherId == personId);
         foreach (var child in children)
         {
-            if (HasLivingDescendants(child.Id))
+            if (HasLivingDescendants(child.Id, livingPeople))
                 return true;
         }
         
@@ -1247,7 +1265,7 @@ public class Simulator
         return count;
     }
     
-    private FamilyTreeNode BuildFamilyTreeNode(Person person)
+    private FamilyTreeNode BuildFamilyTreeNode(Person person, List<Person> livingPeople)
     {
         var node = new FamilyTreeNode
         {
@@ -1264,7 +1282,7 @@ public class Simulator
         // Only add living children or children with living descendants
         var children = _people
             .Where(p => p.FatherId == person.Id || p.MotherId == person.Id)
-            .Where(c => c.IsAlive || HasLivingDescendants(c.Id))
+            .Where(c => c.IsAlive || HasLivingDescendants(c.Id, livingPeople))
             .OrderByDescending(c => c.IsAlive)
             .ThenBy(c => c.BirthDate)
             .Take(10) // Limit children shown to prevent huge trees
@@ -1272,7 +1290,7 @@ public class Simulator
         
         foreach (var child in children)
         {
-            node.Children.Add(BuildFamilyTreeNode(child));
+            node.Children.Add(BuildFamilyTreeNode(child, livingPeople));
         }
         
         return node;
@@ -1280,11 +1298,24 @@ public class Simulator
     
     private string GetSpouseName(Person person)
     {
-        if (!person.SpouseId.HasValue || !_peopleById.ContainsKey(person.SpouseId.Value))
+        if (!person.SpouseId.HasValue)
             return string.Empty;
         
-        var spouse = _peopleById[person.SpouseId.Value];
-        return $"{spouse.FirstName} {spouse.LastName}";
+        // Check living people first
+        if (_peopleById.ContainsKey(person.SpouseId.Value))
+        {
+            var spouse = _peopleById[person.SpouseId.Value];
+            return $"{spouse.FirstName} {spouse.LastName}";
+        }
+        
+        // Check dead people
+        if (_deadPeopleById.ContainsKey(person.SpouseId.Value))
+        {
+            var spouse = _deadPeopleById[person.SpouseId.Value];
+            return $"{spouse.FirstName} {spouse.LastName} †";
+        }
+        
+        return string.Empty;
     }
 }
 
@@ -1309,6 +1340,10 @@ public class SimulationStats
     public List<Event> RecentEvents { get; set; } = new();
     public List<JobStatistic> TopJobs { get; set; } = new();
     public List<FamilyTreeNode> FamilyTrees { get; set; } = new();
+    public List<CityInfo> Cities { get; set; } = new();
+    public List<CountryInfo> Countries { get; set; } = new();
+    public List<ReligionInfo> Religions { get; set; } = new();
+    public List<InventionInfo> Inventions { get; set; } = new();
 }
 
 public class JobStatistic
@@ -1327,4 +1362,32 @@ public class FamilyTreeNode
     public bool IsAlive { get; set; }
     public string SpouseName { get; set; } = string.Empty;
     public List<FamilyTreeNode> Children { get; set; } = new();
+}
+
+public class CityInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public int Population { get; set; }
+    public int Year { get; set; }
+}
+
+public class CountryInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public int Population { get; set; }
+    public int Year { get; set; }
+}
+
+public class ReligionInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public int Followers { get; set; }
+    public int Year { get; set; }
+}
+
+public class InventionInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public int Year { get; set; }
 }
