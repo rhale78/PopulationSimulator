@@ -171,4 +171,53 @@ public class SimulatorService
     {
         return _simulator.ExportAllAsJSON();
     }
+
+    // ============================================================================
+    // SEARCH & FILTER ACCESS
+    // ============================================================================
+
+    public List<Person> GetAllPeople() => _simulator.GetAllPeople();
+    public List<City> GetAllCities() => _simulator.GetAllCities();
+    public List<Country> GetAllCountries() => _simulator.GetAllCountries();
+    public List<Invention> GetAllInventions() => _simulator.GetAllInventions();
+    public Dictionary<long, Person> GetPeopleById() => _simulator.GetPeopleById();
+    public Dictionary<long, Person> GetDeadPeopleById() => _simulator.GetDeadPeopleById();
+    public Dictionary<long, City> GetCitiesById() => _simulator.GetCitiesById();
+    public Dictionary<long, Country> GetCountriesById() => _simulator.GetCountriesById();
+    public DateTime GetCurrentDate() => _simulator.GetCurrentDate();
+
+    // ============================================================================
+    // SAVE/LOAD SYSTEM
+    // ============================================================================
+
+    public string SaveSimulation()
+    {
+        return _simulator.SaveSimulation();
+    }
+
+    public bool LoadSimulation(string jsonData)
+    {
+        // Pause the simulation during load
+        bool wasPaused = _paused;
+        _paused = true;
+
+        bool success = _simulator.LoadSimulation(jsonData);
+
+        if (success)
+        {
+            // Reset UI state
+            _simulationSpeed = 1;
+            OnSpeedChanged?.Invoke(_simulationSpeed);
+
+            // Trigger stats update
+            var stats = _simulator.GetStats();
+            OnStatsUpdated?.Invoke(stats);
+        }
+
+        // Restore pause state
+        _paused = wasPaused;
+        OnPausedChanged?.Invoke(_paused);
+
+        return success;
+    }
 }

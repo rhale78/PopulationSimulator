@@ -1939,6 +1939,174 @@ public class Simulator
         sb.AppendLine("}");
         return sb.ToString();
     }
+
+    // ============================================================================
+    // SEARCH & FILTER ACCESS
+    // ============================================================================
+
+    public List<Person> GetAllPeople() => _people.ToList();
+    public List<City> GetAllCities() => _cities.ToList();
+    public List<Country> GetAllCountries() => _countries.ToList();
+    public List<Invention> GetAllInventions() => _inventions.ToList();
+    public Dictionary<long, Person> GetPeopleById() => new(_peopleById);
+    public Dictionary<long, Person> GetDeadPeopleById() => new(_deadPeopleById);
+    public Dictionary<long, City> GetCitiesById() => new(_citiesById);
+    public Dictionary<long, Country> GetCountriesById() => new(_countriesById);
+    public DateTime GetCurrentDate() => _currentDate;
+
+    // ============================================================================
+    // SAVE/LOAD SYSTEM
+    // ============================================================================
+
+    public string SaveSimulation()
+    {
+        var saveState = new SimulationSaveState
+        {
+            CurrentDate = _currentDate,
+            NextTempId = _nextTempId,
+            GenerationNumber = _generationNumber,
+            AdamId = _adamId,
+            EveId = _eveId,
+            People = _people.ToList(),
+            Cities = _cities.ToList(),
+            Countries = _countries.ToList(),
+            Religions = _religions.ToList(),
+            Jobs = _jobs.ToList(),
+            Inventions = _inventions.ToList(),
+            Wars = _wars.ToList(),
+            Dynasties = _dynasties.ToList(),
+            TradeRoutes = _tradeRoutes.ToList(),
+            Businesses = _businesses.ToList(),
+            BusinessEmployees = _businessEmployees.ToList(),
+            Disasters = _disasters.ToList(),
+            RecentEvents = _recentEvents.ToList()
+        };
+
+        return System.Text.Json.JsonSerializer.Serialize(saveState, new System.Text.Json.JsonSerializerOptions
+        {
+            WriteIndented = true,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.Never
+        });
+    }
+
+    public bool LoadSimulation(string jsonData)
+    {
+        try
+        {
+            var saveState = System.Text.Json.JsonSerializer.Deserialize<SimulationSaveState>(jsonData);
+            if (saveState == null) return false;
+
+            // Clear existing data
+            _people.Clear();
+            _peopleById.Clear();
+            _deadPeopleById.Clear();
+            _livingPeopleCache.Clear();
+            _cities.Clear();
+            _citiesById.Clear();
+            _countries.Clear();
+            _countriesById.Clear();
+            _religions.Clear();
+            _religionsById.Clear();
+            _jobs.Clear();
+            _jobsById.Clear();
+            _inventions.Clear();
+            _inventionsById.Clear();
+            _wars.Clear();
+            _dynasties.Clear();
+            _dynastiesById.Clear();
+            _tradeRoutes.Clear();
+            _tradeRoutesById.Clear();
+            _businesses.Clear();
+            _businessesById.Clear();
+            _businessEmployees.Clear();
+            _disasters.Clear();
+            _recentEvents.Clear();
+
+            // Restore state
+            _currentDate = saveState.CurrentDate;
+            _nextTempId = saveState.NextTempId;
+            _generationNumber = saveState.GenerationNumber;
+            _adamId = saveState.AdamId;
+            _eveId = saveState.EveId;
+
+            // Restore collections
+            _people.AddRange(saveState.People);
+            _cities.AddRange(saveState.Cities);
+            _countries.AddRange(saveState.Countries);
+            _religions.AddRange(saveState.Religions);
+            _jobs.AddRange(saveState.Jobs);
+            _inventions.AddRange(saveState.Inventions);
+            _wars.AddRange(saveState.Wars);
+            _dynasties.AddRange(saveState.Dynasties);
+            _tradeRoutes.AddRange(saveState.TradeRoutes);
+            _businesses.AddRange(saveState.Businesses);
+            _businessEmployees.AddRange(saveState.BusinessEmployees);
+            _disasters.AddRange(saveState.Disasters);
+            _recentEvents.AddRange(saveState.RecentEvents);
+
+            // Rebuild dictionaries
+            foreach (var person in _people)
+            {
+                _peopleById[person.Id] = person;
+                if (!person.IsAlive)
+                    _deadPeopleById[person.Id] = person;
+            }
+
+            foreach (var city in _cities)
+                _citiesById[city.Id] = city;
+
+            foreach (var country in _countries)
+                _countriesById[country.Id] = country;
+
+            foreach (var religion in _religions)
+                _religionsById[religion.Id] = religion;
+
+            foreach (var job in _jobs)
+                _jobsById[job.Id] = job;
+
+            foreach (var invention in _inventions)
+                _inventionsById[invention.Id] = invention;
+
+            foreach (var dynasty in _dynasties)
+                _dynastiesById[dynasty.Id] = dynasty;
+
+            foreach (var tradeRoute in _tradeRoutes)
+                _tradeRoutesById[tradeRoute.Id] = tradeRoute;
+
+            foreach (var business in _businesses)
+                _businessesById[business.Id] = business;
+
+            _livingCacheValid = false;
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+}
+
+public class SimulationSaveState
+{
+    public DateTime CurrentDate { get; set; }
+    public long NextTempId { get; set; }
+    public int GenerationNumber { get; set; }
+    public long? AdamId { get; set; }
+    public long? EveId { get; set; }
+    public List<Person> People { get; set; } = new();
+    public List<City> Cities { get; set; } = new();
+    public List<Country> Countries { get; set; } = new();
+    public List<Religion> Religions { get; set; } = new();
+    public List<Job> Jobs { get; set; } = new();
+    public List<Invention> Inventions { get; set; } = new();
+    public List<War> Wars { get; set; } = new();
+    public List<Dynasty> Dynasties { get; set; } = new();
+    public List<TradeRoute> TradeRoutes { get; set; } = new();
+    public List<Business> Businesses { get; set; } = new();
+    public List<BusinessEmployee> BusinessEmployees { get; set; } = new();
+    public List<NaturalDisaster> Disasters { get; set; } = new();
+    public List<Event> RecentEvents { get; set; } = new();
 }
 
 public class SimulationStats
