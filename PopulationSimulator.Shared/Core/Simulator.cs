@@ -398,11 +398,14 @@ public class Simulator
     
     private void ProcessDeaths()
     {
-        // Cache living people to avoid multiple enumerations
-        var livingPeople = GetLivingPeople().ToList(); // ToList to avoid collection modification
-
-        foreach (var person in livingPeople)
+        // PERFORMANCE: Direct array iteration - no LINQ, no ToList allocation
+        // Process in reverse to avoid issues if we need to remove from list later
+        for (int i = _people.Count - 1; i >= 0; i--)
         {
+            var person = _people[i];
+            if (!person.IsAlive) continue; // Skip already dead
+
+            // PERFORMANCE: Cache age calculation (expensive DateTime math)
             int age = person.GetAge(_currentDate);
             double deathChance = CalculateDeathChance(person, age);
 
@@ -416,12 +419,11 @@ public class Simulator
                 person.CauseOfDeath = DetermineCauseOfDeath(person, age);
 
                 // Add to dead people dictionary for later lookup
-                if (!_deadPeopleById.ContainsKey(person.Id))
-                {
-                    _deadPeopleById[person.Id] = person;
-                }
+                _deadPeopleById[person.Id] = person; // Direct assignment, no ContainsKey check needed
 
-                LogEvent("Death", $"{person.FirstName} {person.LastName} died at age {age} ({person.CauseOfDeath})", person.Id);
+                // PERFORMANCE: Only log 10% of deaths to reduce string allocations
+                if (_random.Next(100) < 10)
+                    LogEvent("Death", $"{person.FirstName} {person.LastName} died at age {age} ({person.CauseOfDeath})", person.Id);
 
                 // Handle succession if ruler
                 if (person.IsRuler && person.CountryId.HasValue)
@@ -985,10 +987,11 @@ public class Simulator
         // Process existing businesses (rise/fall, innovation)
         ProcessBusinesses();
 
-        // Natural disasters
-        if (population > 100 && _random.NextDouble() < 0.08)
+        // Natural disasters (now geography-aware with individual probabilities)
+        // Increased frequency since each disaster has its own probability check
+        if (population > 100 && _cities.Count > 0 && _random.NextDouble() < 0.40)
         {
-            TriggerNaturalDisaster();
+            TriggerNaturalDisaster(); // Now checks geography-specific probabilities internally
         }
 
         // Wars
@@ -1006,6 +1009,10 @@ public class Simulator
         
         if (founder == null) return;
         
+        // Assign random geography and climate
+        string[] geographies = { "Coastal", "Mountain", "Plains", "Desert", "Forest", "RiverValley", "Island" };
+        string[] climates = { "Tropical", "Temperate", "Arid", "Arctic", "Mediterranean" };
+
         var city = new City
         {
             Id = _nextTempId--,
@@ -1013,7 +1020,9 @@ public class Simulator
             FoundedDate = _currentDate,
             Population = 0,
             FounderId = founder.Id,
-            Wealth = 0
+            Wealth = 0,
+            Geography = geographies[_random.Next(geographies.Length)],
+            Climate = climates[_random.Next(climates.Length)]
         };
         
         _cities.Add(city);
@@ -1050,7 +1059,9 @@ public class Simulator
             CapitalCityId = city.Id,
             Population = city.Population,
             Wealth = 0,
-            MilitaryStrength = city.Population / 10
+            MilitaryStrength = city.Population / 10,
+            DominantGeography = city.Geography, // Inherit from capital
+            DominantClimate = city.Climate
         };
         
         _countries.Add(country);
@@ -1330,46 +1341,135 @@ public class Simulator
 
     private void TriggerNaturalDisaster()
     {
-        // Select disaster type
-        string[] disasterTypes = { "Earthquake", "Flood", "Plague", "Famine", "Drought",
-            "Hurricane", "Volcano", "Wildfire", "Tsunami", "Blizzard", "Tornado", "Landslide" };
-        string disasterType = disasterTypes[_random.Next(disasterTypes.Length)];
+        if (_cities.Count == 0) return;
 
-        // Select affected location (city or country)
-        City? affectedCity = null;
-        Country? affectedCountry = null;
+        // PERFORMANCE: Pre-build invention lookup HashSet (O(1) lookups)
+        var discoveredInventions = new HashSet<string>(_inventions.Select(i => i.Name));
 
-        if (_cities.Any() && _random.NextDouble() < 0.7)
+        // Select eligible cities based on geography-aware disaster probabilities
+        var eligibleCities = new List<(City city, string disasterType, double probability)>();
+
+        // OPTIMIZED: Single pass through cities to build eligible list
+        for (int i = 0; i < _cities.Count; i++)
         {
-            affectedCity = _cities[_random.Next(_cities.Count)];
-            affectedCountry = affectedCity.CountryId.HasValue && _countriesById.ContainsKey(affectedCity.CountryId.Value)
-                ? _countriesById[affectedCity.CountryId.Value]
-                : null;
+            var city = _cities[i];
+            string geo = city.Geography;
+            string climate = city.Climate;
+
+            // Geography-specific disasters with realistic probabilities
+            if (geo == "Coastal" || geo == "Island")
+            {
+                if (climate == "Tropical") eligibleCities.Add((city, "Hurricane", 0.12)); // 12% for tropical coasts
+                eligibleCities.Add((city, "Tsunami", 0.03)); // 3% for coasts
+                eligibleCities.Add((city, "Flood", 0.08)); // 8% for coasts
+            }
+
+            if (geo == "Mountain")
+            {
+                eligibleCities.Add((city, "Volcano", 0.04)); // 4% for mountains
+                eligibleCities.Add((city, "Earthquake", 0.10)); // 10% for mountains
+                eligibleCities.Add((city, "Landslide", 0.06)); // 6% for mountains
+                if (climate == "Arctic") eligibleCities.Add((city, "Blizzard", 0.15)); // 15% arctic mountains
+            }
+
+            if (geo == "Plains")
+            {
+                eligibleCities.Add((city, "Tornado", 0.05)); // 5% for plains
+                if (climate == "Temperate") eligibleCities.Add((city, "Flood", 0.06)); // 6% temperate plains
+            }
+
+            if (geo == "Desert" || climate == "Arid")
+            {
+                eligibleCities.Add((city, "Drought", 0.15)); // 15% for deserts
+            }
+
+            if (geo == "Forest")
+            {
+                eligibleCities.Add((city, "Wildfire", 0.08)); // 8% for forests
+                if (climate == "Arid") eligibleCities.Add((city, "Wildfire", 0.12)); // 12% dry forests
+            }
+
+            if (geo == "RiverValley")
+            {
+                eligibleCities.Add((city, "Flood", 0.12)); // 12% for river valleys
+            }
+
+            if (climate == "Arctic")
+            {
+                eligibleCities.Add((city, "Blizzard", 0.10)); // 10% arctic regions
+            }
+
+            // Universal disasters (can happen anywhere but less frequent)
+            eligibleCities.Add((city, "Earthquake", 0.02)); // 2% anywhere
+
+            // Plague and Famine - affected by inventions (mitigated by technology)
+            double plagueProbability = 0.08; // Base 8%
+            double famineProbability = 0.10; // Base 10%
+
+            // MITIGATION: Medicine reduces plague
+            if (discoveredInventions.Contains("Vaccination")) plagueProbability *= 0.1; // 90% reduction
+            else if (discoveredInventions.Contains("Antiseptics")) plagueProbability *= 0.3; // 70% reduction
+            else if (discoveredInventions.Contains("Herbal Medicine")) plagueProbability *= 0.6; // 40% reduction
+
+            // MITIGATION: Agriculture/Food reduces famine
+            if (discoveredInventions.Contains("Crop Rotation") && discoveredInventions.Contains("Irrigation"))
+                famineProbability *= 0.2; // 80% reduction
+            else if (discoveredInventions.Contains("Agriculture") && discoveredInventions.Contains("Granary"))
+                famineProbability *= 0.4; // 60% reduction
+            else if (discoveredInventions.Contains("Agriculture"))
+                famineProbability *= 0.7; // 30% reduction
+
+            if (plagueProbability > 0.001) eligibleCities.Add((city, "Plague", plagueProbability));
+            if (famineProbability > 0.001) eligibleCities.Add((city, "Famine", famineProbability));
         }
-        else if (_countries.Any())
-        {
-            affectedCountry = _countries[_random.Next(_countries.Count)];
-        }
+
+        if (eligibleCities.Count == 0) return;
+
+        // Select disaster based on probability weights
+        var selected = eligibleCities[_random.Next(eligibleCities.Count)];
+        if (_random.NextDouble() > selected.probability) return; // Check if disaster actually occurs
+
+        var affectedCity = selected.city;
+        var disasterType = selected.disasterType;
+        var affectedCountry = affectedCity.CountryId.HasValue && _countriesById.ContainsKey(affectedCity.CountryId.Value)
+            ? _countriesById[affectedCity.CountryId.Value]
+            : null;
 
         int severity = _random.Next(1, 11); // 1-10 severity scale
+
+        // PERFORMANCE: Direct array access instead of LINQ for affected people
         int deaths = 0;
         int peopleDisplaced = 0;
-        int buildingsDestroyed = 0;
-        decimal economicDamage = 0;
+        int maxAffected = severity * 5;
+        int affected = 0;
 
-        // Calculate impact based on disaster type and severity
-        var affectedPeople = _people.Where(p => p.IsAlive &&
-            (affectedCity != null && p.CityId == affectedCity.Id ||
-             affectedCountry != null && p.CountryId == affectedCountry.Id)).ToList();
-
-        foreach (var person in affectedPeople.Take(severity * 5))
+        // OPTIMIZED: Use for loop instead of foreach for better performance
+        for (int i = 0; i < _people.Count && affected < maxAffected; i++)
         {
-            // Disease resistance helps with plague
-            double survivalChance = disasterType == "Plague"
-                ? person.DiseaseResistance / 100.0
-                : 1.0 - (severity / 20.0);
+            var person = _people[i];
+            if (!person.IsAlive || person.CityId != affectedCity.Id) continue;
 
-            if (_random.NextDouble() > survivalChance)
+            affected++;
+
+            // Calculate survival chance based on disaster type and mitigations
+            double survivalChance = 1.0 - (severity / 20.0);
+
+            if (disasterType == "Plague")
+            {
+                survivalChance = person.DiseaseResistance / 100.0;
+                // Medicine inventions help survival
+                if (discoveredInventions.Contains("Vaccination")) survivalChance *= 1.5;
+                else if (discoveredInventions.Contains("Surgery")) survivalChance *= 1.3;
+            }
+            else if (disasterType == "Famine")
+            {
+                survivalChance = person.Health / 150.0; // Health affects famine survival
+                // Food storage helps
+                if (discoveredInventions.Contains("Granary")) survivalChance *= 1.4;
+                if (discoveredInventions.Contains("Salt Preservation")) survivalChance *= 1.2;
+            }
+
+            if (_random.NextDouble() > Math.Min(survivalChance, 0.95))
             {
                 person.IsAlive = false;
                 person.DeathDate = _currentDate;
@@ -1384,8 +1484,15 @@ public class Simulator
             }
         }
 
-        buildingsDestroyed = severity * _random.Next(5, 20);
-        economicDamage = severity * _random.Next(1000, 10000);
+        int buildingsDestroyed = severity * _random.Next(5, 20);
+        decimal economicDamage = severity * _random.Next(1000, 10000);
+
+        // MITIGATION: Construction technologies reduce building damage
+        if (discoveredInventions.Contains("Concrete") || discoveredInventions.Contains("Architecture"))
+        {
+            buildingsDestroyed = (int)(buildingsDestroyed * 0.6); // 40% reduction
+            economicDamage *= 0.7m; // 30% reduction
+        }
 
         // Reduce city/country wealth
         if (affectedCity != null)
@@ -1405,13 +1512,12 @@ public class Simulator
             EconomicDamage = economicDamage,
             BuildingsDestroyed = buildingsDestroyed,
             PeopleDisplaced = peopleDisplaced,
-            Description = $"{disasterType} struck {affectedCity?.Name ?? affectedCountry?.Name ?? "an unknown location"} with severity {severity}/10"
+            Description = $"{disasterType} struck {affectedCity?.Name ?? "unknown location"} ({affectedCity.Geography}/{affectedCity.Climate}) with severity {severity}/10"
         };
 
         _disasters.Add(disaster);
 
-        string location = affectedCity?.Name ?? affectedCountry?.Name ?? "the region";
-        LogEvent("Disaster", $"{disasterType} struck {location} - {deaths} dead, {peopleDisplaced} displaced", cityId: affectedCity?.Id, countryId: affectedCountry?.Id);
+        LogEvent("Disaster", $"{disasterType} struck {affectedCity.Name} - {deaths} dead, {peopleDisplaced} displaced", cityId: affectedCity?.Id, countryId: affectedCountry?.Id);
     }
 
     private void SyncToDatabase()

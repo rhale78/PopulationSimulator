@@ -92,7 +92,9 @@ public class DataAccessLayer
                 FoundedDate DATETIME2 NOT NULL,
                 Population INT NOT NULL,
                 FounderId BIGINT NULL,
-                Wealth DECIMAL(18,2) NOT NULL
+                Wealth DECIMAL(18,2) NOT NULL,
+                Geography NVARCHAR(50) NOT NULL DEFAULT 'Plains',
+                Climate NVARCHAR(50) NOT NULL DEFAULT 'Temperate'
             );
 
             IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Countries' AND xtype='U')
@@ -105,7 +107,9 @@ public class DataAccessLayer
                 Population INT NOT NULL,
                 Wealth DECIMAL(18,2) NOT NULL,
                 MilitaryStrength INT NOT NULL,
-                GovernmentType NVARCHAR(50) NOT NULL
+                GovernmentType NVARCHAR(50) NOT NULL,
+                DominantGeography NVARCHAR(50) NOT NULL DEFAULT 'Plains',
+                DominantClimate NVARCHAR(50) NOT NULL DEFAULT 'Temperate'
             );
 
             IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Religions' AND xtype='U')
