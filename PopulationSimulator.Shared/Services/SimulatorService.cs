@@ -7,12 +7,16 @@ public class SimulatorService
     private Simulator _simulator;
     private int _simulationSpeed = 1;
     private bool _running = true;
+    private bool _paused = false;
     private DateTime _lastUIUpdate = DateTime.Now;
     private readonly object _updateLock = new();
-    
+
     public event Action<SimulationStats>? OnStatsUpdated;
     public event Action<int>? OnSpeedChanged;
     public event Action? OnSimulationRestarted;
+    public event Action<bool>? OnPausedChanged;
+
+    public bool IsPaused => _paused;
     
     public SimulatorService()
     {
@@ -47,12 +51,17 @@ public class SimulatorService
         {
             while (_running)
             {
-                // Process simulation days based on speed
-                for (int i = 0; i < _simulationSpeed; i++)
+                // Check if paused
+                if (!_paused)
                 {
-                    _simulator.SimulateDay();
+                    // Process simulation days based on speed
+                    for (int i = 0; i < _simulationSpeed; i++)
+                    {
+                        _simulator.SimulateDay();
+                    }
                 }
-                
+
+                // Always update UI even when paused (so we can see stats)
                 // Throttle UI updates to prevent screen corruption
                 // Only update UI every 500ms
                 if ((DateTime.Now - _lastUIUpdate).TotalMilliseconds >= 500)
@@ -64,7 +73,7 @@ public class SimulatorService
                         _lastUIUpdate = DateTime.Now;
                     }
                 }
-                
+
                 // At speed 1, simulate 1 day per second (1000ms delay)
                 // At higher speeds, delay decreases but never below 50ms
                 int delay = Math.Max(50, 1000 / _simulationSpeed);
@@ -77,19 +86,43 @@ public class SimulatorService
     {
         _running = false;
     }
-    
+
+    public void Pause()
+    {
+        _paused = true;
+        OnPausedChanged?.Invoke(_paused);
+    }
+
+    public void Resume()
+    {
+        _paused = false;
+        OnPausedChanged?.Invoke(_paused);
+    }
+
+    public void TogglePause()
+    {
+        _paused = !_paused;
+        OnPausedChanged?.Invoke(_paused);
+    }
+
+    public void SetSpeed(int speed)
+    {
+        _simulationSpeed = Math.Clamp(speed, 1, 100);
+        OnSpeedChanged?.Invoke(_simulationSpeed);
+    }
+
     public void IncreaseSpeed()
     {
         _simulationSpeed = Math.Min(_simulationSpeed + 1, 100);
         OnSpeedChanged?.Invoke(_simulationSpeed);
     }
-    
+
     public void DecreaseSpeed()
     {
         _simulationSpeed = Math.Max(_simulationSpeed - 1, 1);
         OnSpeedChanged?.Invoke(_simulationSpeed);
     }
-    
+
     public SimulationStats GetCurrentStats()
     {
         return _simulator.GetStats();

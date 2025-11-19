@@ -1789,6 +1789,18 @@ public class SimulationStats
     public int TotalWithHereditaryDiseases { get; set; }
     public double AverageLongevity { get; set; }
     public double AverageDiseaseResistance { get; set; }
+
+    // WEB VIEWER: Comprehensive data for tabbed UI
+    public List<CitySummary> Cities { get; set; } = new();
+    public List<CountrySummary> Countries { get; set; } = new();
+    public List<InventionSummary> Inventions { get; set; } = new();
+    public List<DisasterSummary> RecentDisasters { get; set; } = new();
+    public List<BusinessSummary> Businesses { get; set; } = new();
+    public int TotalBusinesses { get; set; }
+    public int TotalDisasters { get; set; }
+
+    // Population history for charts (last 100 data points)
+    public List<PopulationDataPoint> PopulationHistory { get; set; } = new();
 }
 
 public class JobStatistic
@@ -1826,4 +1838,74 @@ public class PersonSummary
     public string NotableFor { get; set; } = string.Empty;
     public bool HasHereditaryDisease { get; set; }
     public string HereditaryConditions { get; set; } = string.Empty;
+}
+
+public class CitySummary
+{
+    public long Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int Population { get; set; }
+    public decimal Wealth { get; set; }
+    public string Geography { get; set; } = string.Empty;
+    public string Climate { get; set; } = string.Empty;
+    public string Country { get; set; } = string.Empty;
+    public int YearsOld { get; set; }
+}
+
+public class CountrySummary
+{
+    public long Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public int Population { get; set; }
+    public decimal Wealth { get; set; }
+    public string DominantGeography { get; set; } = string.Empty;
+    public string DominantClimate { get; set; } = string.Empty;
+    public int MilitaryStrength { get; set; }
+    public string GovernmentType { get; set; } = string.Empty;
+    public string Ruler { get; set; } = string.Empty;
+    public string Capital { get; set; } = string.Empty;
+    public int YearsOld { get; set; }
+}
+
+public class InventionSummary
+{
+    public string Name { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string Inventor { get; set; } = string.Empty;
+    public int YearDiscovered { get; set; }
+    public int HealthBonus { get; set; }
+    public int LifespanBonus { get; set; }
+}
+
+public class DisasterSummary
+{
+    public string Type { get; set; } = string.Empty;
+    public string Location { get; set; } = string.Empty;
+    public int Severity { get; set; }
+    public int Deaths { get; set; }
+    public decimal EconomicDamage { get; set; }
+    public int YearOccurred { get; set; }
+    public string Description { get; set; } = string.Empty;
+}
+
+public class BusinessSummary
+{
+    public string Name { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public string Owner { get; set; } = string.Empty;
+    public string City { get; set; } = string.Empty;
+    public decimal Wealth { get; set; }
+    public int EmployeeCount { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public int Reputation { get; set; }
+    public int YearsInBusiness { get; set; }
+    public bool IsActive { get; set; }
+}
+
+public class PopulationDataPoint
+{
+    public int Year { get; set; }
+    public int Living { get; set; }
+    public int Deaths { get; set; }
+    public int Births { get; set; }
 }
