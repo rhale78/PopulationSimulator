@@ -1752,9 +1752,192 @@ public class Simulator
     {
         if (!person.SpouseId.HasValue || !_peopleById.ContainsKey(person.SpouseId.Value))
             return string.Empty;
-        
+
         var spouse = _peopleById[person.SpouseId.Value];
         return $"{spouse.FirstName} {spouse.LastName}";
+    }
+
+    // ============================================================================
+    // EXPORT FUNCTIONALITY
+    // ============================================================================
+
+    public string ExportPopulationAsCSV()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Id,FirstName,LastName,Gender,BirthDate,DeathDate,IsAlive,Age,Intelligence,Strength,Health,Fertility,Charisma,Creativity,Leadership,Aggression,Wisdom,Beauty,BloodType,Job,City,Country,Married,SpouseName,MotherName,FatherName");
+
+        foreach (var person in _people)
+        {
+            var age = person.GetAge(_currentDate);
+            var job = person.JobId.HasValue && _jobsById.ContainsKey(person.JobId.Value) ? _jobsById[person.JobId.Value].Name : "Unemployed";
+            var city = person.CityId.HasValue && _citiesById.ContainsKey(person.CityId.Value) ? _citiesById[person.CityId.Value].Name : "Nomad";
+            var country = person.CountryId.HasValue && _countriesById.ContainsKey(person.CountryId.Value) ? _countriesById[person.CountryId.Value].Name : "None";
+            var spouse = person.SpouseId.HasValue && _peopleById.ContainsKey(person.SpouseId.Value) ? $"{_peopleById[person.SpouseId.Value].FirstName} {_peopleById[person.SpouseId.Value].LastName}" : "";
+            var mother = person.MotherId.HasValue && (_peopleById.ContainsKey(person.MotherId.Value) || _deadPeopleById.ContainsKey(person.MotherId.Value))
+                ? (_peopleById.ContainsKey(person.MotherId.Value) ? $"{_peopleById[person.MotherId.Value].FirstName} {_peopleById[person.MotherId.Value].LastName}"
+                : $"{_deadPeopleById[person.MotherId.Value].FirstName} {_deadPeopleById[person.MotherId.Value].LastName}") : "";
+            var father = person.FatherId.HasValue && (_peopleById.ContainsKey(person.FatherId.Value) || _deadPeopleById.ContainsKey(person.FatherId.Value))
+                ? (_peopleById.ContainsKey(person.FatherId.Value) ? $"{_peopleById[person.FatherId.Value].FirstName} {_peopleById[person.FatherId.Value].LastName}"
+                : $"{_deadPeopleById[person.FatherId.Value].FirstName} {_deadPeopleById[person.FatherId.Value].LastName}") : "";
+
+            sb.AppendLine($"{person.Id},\"{person.FirstName}\",\"{person.LastName}\",{person.Gender},{person.BirthDate:yyyy-MM-dd},{person.DeathDate:yyyy-MM-dd},{person.IsAlive},{age},{person.Intelligence},{person.Strength},{person.Health},{person.Fertility},{person.Charisma},{person.Creativity},{person.Leadership},{person.Aggression},{person.Wisdom},{person.Beauty},\"{person.BloodType}\",\"{job}\",\"{city}\",\"{country}\",{person.IsMarried},\"{spouse}\",\"{mother}\",\"{father}\"");
+        }
+
+        return sb.ToString();
+    }
+
+    public string ExportCitiesAsCSV()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Id,Name,Country,Population,Wealth,Geography,Climate,FoundedDate,YearsOld,Founder");
+
+        foreach (var city in _cities)
+        {
+            var country = city.CountryId.HasValue && _countriesById.ContainsKey(city.CountryId.Value) ? _countriesById[city.CountryId.Value].Name : "Independent";
+            var yearsOld = (_currentDate - city.FoundedDate).Days / 365;
+            var founder = city.FounderId.HasValue && (_peopleById.ContainsKey(city.FounderId.Value) || _deadPeopleById.ContainsKey(city.FounderId.Value))
+                ? (_peopleById.ContainsKey(city.FounderId.Value) ? $"{_peopleById[city.FounderId.Value].FirstName} {_peopleById[city.FounderId.Value].LastName}"
+                : $"{_deadPeopleById[city.FounderId.Value].FirstName} {_deadPeopleById[city.FounderId.Value].LastName}") : "Unknown";
+
+            sb.AppendLine($"{city.Id},\"{city.Name}\",\"{country}\",{city.Population},{city.Wealth},\"{city.Geography}\",\"{city.Climate}\",{city.FoundedDate:yyyy-MM-dd},{yearsOld},\"{founder}\"");
+        }
+
+        return sb.ToString();
+    }
+
+    public string ExportCountriesAsCSV()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Id,Name,Population,Wealth,MilitaryStrength,GovernmentType,Geography,Climate,FoundedDate,YearsOld,Ruler,Capital");
+
+        foreach (var country in _countries)
+        {
+            var yearsOld = (_currentDate - country.FoundedDate).Days / 365;
+            var ruler = country.RulerId.HasValue && _peopleById.ContainsKey(country.RulerId.Value) ? $"{_peopleById[country.RulerId.Value].FirstName} {_peopleById[country.RulerId.Value].LastName}" : "None";
+            var capital = country.CapitalCityId.HasValue && _citiesById.ContainsKey(country.CapitalCityId.Value) ? _citiesById[country.CapitalCityId.Value].Name : "None";
+
+            sb.AppendLine($"{country.Id},\"{country.Name}\",{country.Population},{country.Wealth},{country.MilitaryStrength},\"{country.GovernmentType}\",\"{country.DominantGeography}\",\"{country.DominantClimate}\",{country.FoundedDate:yyyy-MM-dd},{yearsOld},\"{ruler}\",\"{capital}\"");
+        }
+
+        return sb.ToString();
+    }
+
+    public string ExportInventionsAsCSV()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Name,Category,YearDiscovered,Inventor,HealthBonus,LifespanBonus,Description");
+
+        foreach (var invention in _inventions)
+        {
+            var yearDiscovered = invention.DiscoveredDate.Year;
+            var inventor = invention.InventorId.HasValue && (_peopleById.ContainsKey(invention.InventorId.Value) || _deadPeopleById.ContainsKey(invention.InventorId.Value))
+                ? (_peopleById.ContainsKey(invention.InventorId.Value) ? $"{_peopleById[invention.InventorId.Value].FirstName} {_peopleById[invention.InventorId.Value].LastName}"
+                : $"{_deadPeopleById[invention.InventorId.Value].FirstName} {_deadPeopleById[invention.InventorId.Value].LastName}") : "Unknown";
+
+            sb.AppendLine($"\"{invention.Name}\",\"{invention.Category}\",{yearDiscovered},\"{inventor}\",{invention.HealthBonus},{invention.LifespanBonus},\"{invention.Description}\"");
+        }
+
+        return sb.ToString();
+    }
+
+    public string ExportDisastersAsCSV()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Type,Location,Severity,Deaths,EconomicDamage,Date,Description");
+
+        foreach (var disaster in _disasters)
+        {
+            var location = disaster.CityId.HasValue && _citiesById.ContainsKey(disaster.CityId.Value) ? _citiesById[disaster.CityId.Value].Name : "Unknown";
+
+            sb.AppendLine($"\"{disaster.Type}\",\"{location}\",{disaster.Severity},{disaster.Deaths},{disaster.EconomicDamage},{disaster.Date:yyyy-MM-dd},\"{disaster.Description}\"");
+        }
+
+        return sb.ToString();
+    }
+
+    public string ExportBusinessesAsCSV()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Name,Type,Owner,City,Wealth,Reputation,IsActive,FoundedDate,YearsInBusiness,EmployeeCount");
+
+        foreach (var business in _businesses)
+        {
+            var owner = business.OwnerId.HasValue && _peopleById.ContainsKey(business.OwnerId.Value) ? $"{_peopleById[business.OwnerId.Value].FirstName} {_peopleById[business.OwnerId.Value].LastName}" : "Unknown";
+            var city = business.CityId.HasValue && _citiesById.ContainsKey(business.CityId.Value) ? _citiesById[business.CityId.Value].Name : "Unknown";
+            var yearsInBusiness = (_currentDate - business.FoundedDate).Days / 365;
+            var employeeCount = _businessEmployees.Count(e => e.BusinessId == business.Id);
+
+            sb.AppendLine($"\"{business.Name}\",\"{business.Type}\",\"{owner}\",\"{city}\",{business.Wealth},{business.Reputation},{business.IsActive},{business.FoundedDate:yyyy-MM-dd},{yearsInBusiness},{employeeCount}");
+        }
+
+        return sb.ToString();
+    }
+
+    public string ExportEventsAsCSV()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Type,Date,Description,PersonId");
+
+        foreach (var evt in _recentEvents)
+        {
+            sb.AppendLine($"\"{evt.EventType}\",{evt.Date:yyyy-MM-dd},\"{evt.Description}\",{evt.PersonId}");
+        }
+
+        return sb.ToString();
+    }
+
+    public string ExportAllAsJSON()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("{");
+        sb.AppendLine("  \"CurrentDate\": \"" + _currentDate.ToString("yyyy-MM-dd") + "\",");
+        sb.AppendLine("  \"GenerationNumber\": " + _generationNumber + ",");
+        sb.AppendLine("  \"Statistics\": {");
+
+        var stats = GetStats();
+        sb.AppendLine("    \"TotalPopulation\": " + stats.TotalPopulation + ",");
+        sb.AppendLine("    \"LivingPopulation\": " + stats.LivingPopulation + ",");
+        sb.AppendLine("    \"TotalBirths\": " + stats.TotalBirths + ",");
+        sb.AppendLine("    \"TotalDeaths\": " + stats.TotalDeaths + ",");
+        sb.AppendLine("    \"TotalCities\": " + stats.TotalCities + ",");
+        sb.AppendLine("    \"TotalCountries\": " + stats.TotalCountries + ",");
+        sb.AppendLine("    \"TotalInventions\": " + stats.TotalInventions + ",");
+        sb.AppendLine("    \"TotalWars\": " + stats.TotalWars + ",");
+        sb.AppendLine("    \"TotalDisasters\": " + _disasters.Count);
+        sb.AppendLine("  },");
+
+        sb.AppendLine("  \"People\": [");
+        for (int i = 0; i < _people.Count; i++)
+        {
+            var p = _people[i];
+            sb.Append($"    {{\"Id\": {p.Id}, \"Name\": \"{p.FirstName} {p.LastName}\", \"Gender\": \"{p.Gender}\", \"Age\": {p.GetAge(_currentDate)}, \"IsAlive\": {p.IsAlive.ToString().ToLower()}}}");
+            if (i < _people.Count - 1) sb.AppendLine(",");
+        }
+        sb.AppendLine();
+        sb.AppendLine("  ],");
+
+        sb.AppendLine("  \"Cities\": [");
+        for (int i = 0; i < _cities.Count; i++)
+        {
+            var c = _cities[i];
+            sb.Append($"    {{\"Id\": {c.Id}, \"Name\": \"{c.Name}\", \"Population\": {c.Population}, \"Geography\": \"{c.Geography}\", \"Climate\": \"{c.Climate}\"}}");
+            if (i < _cities.Count - 1) sb.AppendLine(",");
+        }
+        sb.AppendLine();
+        sb.AppendLine("  ],");
+
+        sb.AppendLine("  \"Countries\": [");
+        for (int i = 0; i < _countries.Count; i++)
+        {
+            var c = _countries[i];
+            sb.Append($"    {{\"Id\": {c.Id}, \"Name\": \"{c.Name}\", \"Population\": {c.Population}, \"GovernmentType\": \"{c.GovernmentType}\"}}");
+            if (i < _countries.Count - 1) sb.AppendLine(",");
+        }
+        sb.AppendLine();
+        sb.AppendLine("  ]");
+
+        sb.AppendLine("}");
+        return sb.ToString();
     }
 }
 

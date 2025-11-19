@@ -1,5 +1,106 @@
+/* Root color variables for light mode */
+:root {
+    --bg-color: #ffffff;
+    --text-color: #212529;
+    --card-bg: #ffffff;
+    --card-border: rgba(0, 0, 0, 0.125);
+    --muted-text: #6c757d;
+}
+
+/* Dark mode color variables */
+body.dark-mode {
+    --bg-color: #1a1a1a;
+    --text-color: #e0e0e0;
+    --card-bg: #2d2d2d;
+    --card-border: rgba(255, 255, 255, 0.125);
+    --muted-text: #adb5bd;
+}
+
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Dark mode card styles */
+body.dark-mode .card {
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--text-color);
+}
+
+body.dark-mode .text-muted {
+    color: var(--muted-text) !important;
+}
+
+body.dark-mode .table {
+    color: var(--text-color);
+}
+
+body.dark-mode .list-unstyled {
+    color: var(--text-color);
+}
+
+/* Toast notifications */
+.toast-container {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    z-index: 9999;
+}
+
+.notification-toast {
+    min-width: 300px;
+    margin-bottom: 10px;
+    background: white;
+    border-left: 4px solid #0d6efd;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    animation: slideIn 0.3s ease-out;
+}
+
+body.dark-mode .notification-toast {
+    background: #2d2d2d;
+    color: #e0e0e0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.notification-toast.success {
+    border-left-color: #198754;
+}
+
+.notification-toast.warning {
+    border-left-color: #ffc107;
+}
+
+.notification-toast.danger {
+    border-left-color: #dc3545;
+}
+
+.notification-toast.info {
+    border-left-color: #0dcaf0;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
 }
 
 a, .btn-link {

@@ -1,7 +1,9 @@
 ﻿@page "/"
 @using PopulationSimulator.Core
 @using PopulationSimulator.Services
+@using Microsoft.JSInterop
 @inject SimulatorService SimulatorService
+@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 @implements IDisposable
 
@@ -10,13 +12,16 @@
 <div class="container-fluid mt-3">
     @* Controls at top as requested *@
     <div class="row mb-3">
-        <div class="col-12">
+        <div class="col-md-6">
             <div class="card">
                 <div class="card-header bg-dark text-white">
                     <h5 class="mb-0">⚙️ Controls</h5>
                 </div>
                 <div class="card-body">
                     <div class="btn-group me-3" role="group">
+                        <button class="btn @(_isPaused ? "btn-success" : "btn-secondary")" @onclick="TogglePause">
+                            @(_isPaused ? "▶️ Resume" : "⏸️ Pause")
+                        </button>
                         <button class="btn btn-success" @onclick="SimulatorService.IncreaseSpeed">
                             ➕ Speed Up
                         </button>
@@ -27,7 +32,50 @@
                             🔄 Restart
                         </button>
                     </div>
-                    <span class="text-muted">Current speed: @_simulationSpeed x (1 day per @((int)(1000.0 / Math.Max(1, _simulationSpeed)))ms)</span>
+                    <button class="btn btn-outline-secondary ms-2" @onclick="ToggleDarkMode">
+                        @(_isDarkMode ? "☀️ Light" : "🌙 Dark")
+                    </button>
+                    <div class="mt-2">
+                        <span class="text-muted">Current speed: @_simulationSpeed x (1 day per @((int)(1000.0 / Math.Max(1, _simulationSpeed)))ms)</span><br/>
+                        <span class="text-muted">Status: @(_isPaused ? "⏸️ PAUSED" : "▶️ Running")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">📥 Export Data</h5>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group-vertical d-grid gap-1" role="group">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="ExportPopulation">
+                            💾 Export Population (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="ExportCities">
+                            🏙️ Export Cities (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="ExportCountries">
+                            🌍 Export Countries (CSV)
+                        </button>
+                    </div>
+                    <div class="btn-group-vertical d-grid gap-1 mt-2" role="group">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportInventions">
+                            💡 Export Inventions (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportDisasters">
+                            🌋 Export Disasters (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportBusinesses">
+                            🏪 Export Businesses (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportEvents">
+                            📰 Export Events (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-success" @onclick="ExportAllJSON">
+                            📦 Export All (JSON)
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -42,16 +90,16 @@
                 </div>
                 <div class="card-body">
                     <div class="row text-center">
-                        <div class="col-md-3">
+                        <div class="col-md-3" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Current simulation date in the virtual world">
                             <strong>Current Date:</strong> Year @_stats.CurrentDate.Year, Day @_stats.CurrentDate.DayOfYear
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-3" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Number of generations since Adam and Eve">
                             <strong>Generation:</strong> @_stats.GenerationNumber
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-3" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Living population gender distribution">
                             <strong>Gender:</strong> @_stats.MaleCount ♂ / @_stats.FemaleCount ♀
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-3" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Simulation speed multiplier (use +/- keys to adjust)">
                             <strong>Speed:</strong> @_simulationSpeed x
                         </div>
                     </div>
@@ -75,31 +123,31 @@
                 <div class="card-body">
                     <table class="table table-sm">
                         <tbody>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="left" title="Total number of people ever born in the simulation">
                                 <td><strong>Total Population:</strong></td>
                                 <td class="text-end">@_stats.TotalPopulation</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="left" title="Current living population count">
                                 <td><strong>Living:</strong></td>
                                 <td class="text-end">@_stats.LivingPopulation</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="left" title="Living males in the population">
                                 <td><strong>Males:</strong></td>
                                 <td class="text-end">@_stats.MaleCount</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="left" title="Living females in the population">
                                 <td><strong>Females:</strong></td>
                                 <td class="text-end">@_stats.FemaleCount</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="left" title="Total births throughout history">
                                 <td><strong>Total Births:</strong></td>
                                 <td class="text-end">@_stats.TotalBirths</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="left" title="Total deaths throughout history">
                                 <td><strong>Total Deaths:</strong></td>
                                 <td class="text-end">@_stats.TotalDeaths</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="left" title="Total marriages formed in the simulation">
                                 <td><strong>Total Marriages:</strong></td>
                                 <td class="text-end">@_stats.TotalMarriages</td>
                             </tr>
@@ -117,23 +165,23 @@
                 <div class="card-body">
                     <table class="table table-sm">
                         <tbody>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of cities founded with varying geographies and climates">
                                 <td><strong>Cities:</strong></td>
                                 <td class="text-end">@_stats.TotalCities</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of countries established in the simulation">
                                 <td><strong>Countries:</strong></td>
                                 <td class="text-end">@_stats.TotalCountries</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of religions founded by the population">
                                 <td><strong>Religions:</strong></td>
                                 <td class="text-end">@_stats.TotalReligions</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of inventions discovered (affects disasters, health, and economy)">
                                 <td><strong>Inventions:</strong></td>
                                 <td class="text-end">@_stats.TotalInventions</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of wars fought between countries">
                                 <td><strong>Wars:</strong></td>
                                 <td class="text-end">@_stats.TotalWars</td>
                             </tr>
@@ -309,21 +357,134 @@
 @code {
     private SimulationStats _stats = new();
     private int _simulationSpeed = 1;
+    private bool _isPaused = false;
+    private bool _isDarkMode = false;
+
+    // Milestone tracking
+    private HashSet<int> _populationMilestones = new() { 10, 50, 100, 500, 1000, 5000, 10000 };
+    private HashSet<int> _citiesMilestones = new() { 1, 5, 10, 25, 50 };
+    private HashSet<int> _inventionMilestones = new() { 1, 10, 25, 50, 100 };
+    private int _lastPopulation = 0;
+    private int _lastCities = 0;
+    private int _lastInventions = 0;
 
     protected override void OnInitialized()
     {
         SimulatorService.OnStatsUpdated += HandleStatsUpdated;
         SimulatorService.OnSpeedChanged += HandleSpeedChanged;
         SimulatorService.OnSimulationRestarted += HandleSimulationRestarted;
-        
+        SimulatorService.OnPausedChanged += HandlePausedChanged;
+
         // Start the simulation
         SimulatorService.Start();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Setup keyboard shortcuts
+            var dotNetRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("setupKeyboardShortcuts", dotNetRef);
+
+            // Initialize dark mode state
+            _isDarkMode = await JSRuntime.InvokeAsync<bool>("darkMode.isDarkMode");
+
+            // Initialize Bootstrap tooltips
+            await JSRuntime.InvokeVoidAsync("initializeTooltips");
+
+            StateHasChanged();
+        }
+        else
+        {
+            // Refresh tooltips after UI updates
+            await JSRuntime.InvokeVoidAsync("refreshTooltips");
+        }
+    }
+
+    [JSInvokable]
+    public void HandleKeyPress(string key)
+    {
+        switch (key)
+        {
+            case "Space":
+                TogglePause();
+                break;
+            case "Plus":
+                SimulatorService.IncreaseSpeed();
+                break;
+            case "Minus":
+                SimulatorService.DecreaseSpeed();
+                break;
+        }
+    }
+
     private void HandleStatsUpdated(SimulationStats stats)
     {
+        // Check for population milestones
+        if (stats.LivingPopulation != _lastPopulation)
+        {
+            foreach (var milestone in _populationMilestones)
+            {
+                if (_lastPopulation < milestone && stats.LivingPopulation >= milestone)
+                {
+                    _ = ShowNotification($"Population reached {milestone}!", "success");
+                    _populationMilestones.Remove(milestone); // Only show once
+                    break;
+                }
+            }
+            _lastPopulation = stats.LivingPopulation;
+        }
+
+        // Check for first city
+        if (_lastCities == 0 && stats.TotalCities > 0)
+        {
+            _ = ShowNotification("First city founded! Civilization begins!", "info");
+        }
+
+        // Check for city milestones
+        if (stats.TotalCities != _lastCities)
+        {
+            foreach (var milestone in _citiesMilestones)
+            {
+                if (_lastCities < milestone && stats.TotalCities >= milestone)
+                {
+                    _ = ShowNotification($"{milestone} cities founded!", "info");
+                    _citiesMilestones.Remove(milestone);
+                    break;
+                }
+            }
+            _lastCities = stats.TotalCities;
+        }
+
+        // Check for invention milestones
+        if (stats.TotalInventions != _lastInventions)
+        {
+            foreach (var milestone in _inventionMilestones)
+            {
+                if (_lastInventions < milestone && stats.TotalInventions >= milestone)
+                {
+                    _ = ShowNotification($"{milestone} inventions discovered!", "success");
+                    _inventionMilestones.Remove(milestone);
+                    break;
+                }
+            }
+            _lastInventions = stats.TotalInventions;
+        }
+
+        // Check for simulation end
+        if (stats.SimulationEnded && !_stats.SimulationEnded)
+        {
+            _ = ShowNotification($"Simulation ended: {stats.EndReason}", "danger", 10000);
+        }
+
         _stats = stats;
         InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ShowNotification(string message, string type, int duration = 5000)
+    {
+        await JSRuntime.InvokeVoidAsync("showNotification", message, type, duration);
     }
 
     private void HandleSpeedChanged(int speed)
@@ -336,12 +497,98 @@
     {
         _stats = new SimulationStats();
         _simulationSpeed = 1;
+        _isPaused = false;
+
+        // Reset milestone tracking
+        _populationMilestones = new() { 10, 50, 100, 500, 1000, 5000, 10000 };
+        _citiesMilestones = new() { 1, 5, 10, 25, 50 };
+        _inventionMilestones = new() { 1, 10, 25, 50, 100 };
+        _lastPopulation = 0;
+        _lastCities = 0;
+        _lastInventions = 0;
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandlePausedChanged(bool isPaused)
+    {
+        _isPaused = isPaused;
         InvokeAsync(StateHasChanged);
     }
 
     private void RestartSimulation()
     {
         SimulatorService.Restart();
+    }
+
+    private void TogglePause()
+    {
+        SimulatorService.TogglePause();
+    }
+
+    private async Task ToggleDarkMode()
+    {
+        _isDarkMode = await JSRuntime.InvokeAsync<bool>("darkMode.toggle");
+        StateHasChanged();
+    }
+
+    // ============================================================================
+    // EXPORT FUNCTIONS
+    // ============================================================================
+
+    private async Task ExportPopulation()
+    {
+        var csv = SimulatorService.ExportPopulationAsCSV();
+        await DownloadFile($"population_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportCities()
+    {
+        var csv = SimulatorService.ExportCitiesAsCSV();
+        await DownloadFile($"cities_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportCountries()
+    {
+        var csv = SimulatorService.ExportCountriesAsCSV();
+        await DownloadFile($"countries_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportInventions()
+    {
+        var csv = SimulatorService.ExportInventionsAsCSV();
+        await DownloadFile($"inventions_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportDisasters()
+    {
+        var csv = SimulatorService.ExportDisastersAsCSV();
+        await DownloadFile($"disasters_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportBusinesses()
+    {
+        var csv = SimulatorService.ExportBusinessesAsCSV();
+        await DownloadFile($"businesses_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportEvents()
+    {
+        var csv = SimulatorService.ExportEventsAsCSV();
+        await DownloadFile($"events_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportAllJSON()
+    {
+        var json = SimulatorService.ExportAllAsJSON();
+        await DownloadFile($"simulation_{_stats.CurrentDate:yyyy-MM-dd}.json", json, "application/json");
+    }
+
+    private async Task DownloadFile(string filename, string content, string contentType)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        var base64 = Convert.ToBase64String(bytes);
+        await JSRuntime.InvokeVoidAsync("downloadFile", filename, base64, contentType);
     }
 
     private RenderFragment RenderFamilyTreeWithIndent(FamilyTreeNode node, int depth)
@@ -393,6 +640,7 @@
         SimulatorService.OnStatsUpdated -= HandleStatsUpdated;
         SimulatorService.OnSpeedChanged -= HandleSpeedChanged;
         SimulatorService.OnSimulationRestarted -= HandleSimulationRestarted;
+        SimulatorService.OnPausedChanged -= HandlePausedChanged;
     }
 }
 

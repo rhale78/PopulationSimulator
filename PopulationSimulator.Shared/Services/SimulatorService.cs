@@ -127,4 +127,48 @@ public class SimulatorService
     {
         return _simulator.GetStats();
     }
+
+    // ============================================================================
+    // EXPORT FUNCTIONALITY
+    // ============================================================================
+
+    public string ExportPopulationAsCSV()
+    {
+        return _simulator.ExportPopulationAsCSV();
+    }
+
+    public string ExportCitiesAsCSV()
+    {
+        return _simulator.ExportCitiesAsCSV();
+    }
+
+    public string ExportCountriesAsCSV()
+    {
+        return _simulator.ExportCountriesAsCSV();
+    }
+
+    public string ExportInventionsAsCSV()
+    {
+        return _simulator.ExportInventionsAsCSV();
+    }
+
+    public string ExportDisastersAsCSV()
+    {
+        return _simulator.ExportDisastersAsCSV();
+    }
+
+    public string ExportBusinessesAsCSV()
+    {
+        return _simulator.ExportBusinessesAsCSV();
+    }
+
+    public string ExportEventsAsCSV()
+    {
+        return _simulator.ExportEventsAsCSV();
+    }
+
+    public string ExportAllAsJSON()
+    {
+        return _simulator.ExportAllAsJSON();
+    }
 }
