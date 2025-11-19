@@ -8,6 +8,7 @@ public class Simulator
     private readonly Random _random;
     private readonly NameGenerator _nameGenerator;
     private readonly GeneticsEngine _geneticsEngine;
+    private readonly GeniusSystem _geniusSystem;
     private readonly DataAccessLayer _dataAccess;
     
     // In-memory collections
@@ -28,6 +29,8 @@ public class Simulator
     private readonly List<War> _wars = new();
     private readonly List<Dynasty> _dynasties = new();
     private readonly Dictionary<long, Dynasty> _dynastiesById = new();
+    private readonly List<TradeRoute> _tradeRoutes = new();
+    private readonly Dictionary<long, TradeRoute> _tradeRoutesById = new();
     private readonly List<Event> _recentEvents = new();
     
     private DateTime _currentDate;
@@ -45,6 +48,7 @@ public class Simulator
         _random = new Random();
         _nameGenerator = new NameGenerator(_random);
         _geneticsEngine = new GeneticsEngine(_random);
+        _geniusSystem = new GeniusSystem(_random);
         _dataAccess = new DataAccessLayer();
         _currentDate = new DateTime(1, 1, 1); // Start at year 1
     }
@@ -134,76 +138,10 @@ public class Simulator
     
     private void SeedJobs()
     {
-        var jobsData = new[]
-        {
-            // Basic jobs (no requirements) - LOWERED REQUIREMENTS for realism
-            ("Farmer", 10, 20, 12, 10m, 1, 1.0, false, null),
-            ("Hunter", 15, 30, 14, 15m, 2, 1.5, false, null),
-            ("Gatherer", 10, 15, 12, 8m, 1, 0.8, false, null),
-            ("Fisherman", 12, 25, 14, 12m, 2, 1.2, false, null),
-            ("Shepherd", 10, 20, 12, 10m, 1, 0.9, false, null),
-            ("Builder", 15, 35, 16, 20m, 3, 1.3, false, null),
-            ("Servant", 8, 12, 12, 5m, 0, 0.9, false, null),
-            
-            // Crafts requiring inventions
-            ("Potter", 20, 15, 16, 18m, 3, 0.9, true, "Pottery"),
-            ("Weaver", 18, 15, 16, 16m, 3, 0.8, true, "Weaving"),
-            ("Tanner", 15, 20, 16, 15m, 2, 1.0, true, "Tanning"),
-            ("Glassmaker", 30, 20, 18, 35m, 5, 1.2, true, "Glassmaking"),
-            
-            // Metallurgy jobs
-            ("Copper Smith", 25, 35, 18, 28m, 4, 1.4, true, "Copper Working"),
-            ("Bronze Smith", 28, 38, 18, 32m, 5, 1.5, true, "Bronze"),
-            ("Iron Smith", 30, 40, 18, 38m, 6, 1.6, true, "Iron Working"),
-            ("Blacksmith", 32, 40, 18, 42m, 6, 1.6, true, "Steel"),
-            ("Goldsmith", 35, 25, 20, 50m, 7, 1.0, true, "Gold Working"),
-            
-            // Professional jobs
-            ("Merchant", 30, 10, 18, 35m, 5, 0.9, false, null),
-            ("Scribe", 40, 8, 20, 30m, 6, 0.6, true, "Writing"),
-            ("Priest", 35, 8, 20, 30m, 7, 0.7, false, null),
-            ("Healer", 38, 10, 20, 40m, 6, 0.8, true, "Herbal Medicine"),
-            ("Physician", 42, 10, 22, 55m, 8, 0.7, true, "Surgery"),
-            ("Scholar", 42, 8, 22, 35m, 7, 0.6, true, "Writing"),
-            ("Teacher", 38, 8, 20, 28m, 6, 0.6, true, "Writing"),
-            
-            // Engineering and Architecture
-            ("Architect", 40, 20, 22, 60m, 8, 0.8, true, "Architecture"),
-            ("Engineer", 42, 25, 22, 65m, 8, 1.0, true, "Mathematics"),
-            ("Mason", 20, 38, 16, 22m, 3, 1.4, true, "Brick Making"),
-            
-            // Arts
-            ("Artist", 30, 10, 18, 25m, 4, 0.7, true, "Painting"),
-            ("Sculptor", 32, 20, 18, 28m, 5, 0.8, true, "Sculpture"),
-            ("Musician", 25, 10, 16, 20m, 4, 0.7, true, "Music"),
-            ("Poet", 35, 8, 18, 22m, 5, 0.6, true, "Poetry"),
-            
-            // Labor
-            ("Miner", 12, 42, 16, 25m, 3, 2.5, false, null),
-            ("Quarryman", 12, 40, 16, 22m, 2, 2.3, false, null),
-            ("Laborer", 8, 30, 14, 8m, 1, 1.5, false, null),
-            
-            // Food production
-            ("Baker", 15, 15, 14, 12m, 2, 0.8, true, "Bread Baking"),
-            ("Brewer", 18, 15, 16, 15m, 2, 0.8, true, "Beer Brewing"),
-            ("Cook", 15, 15, 14, 12m, 2, 0.8, false, null),
-            ("Butcher", 12, 25, 14, 14m, 2, 1.0, false, null),
-            
-            // Transportation
-            ("Carter", 12, 25, 16, 16m, 2, 1.1, true, "Cart"),
-            ("Sailor", 18, 30, 16, 20m, 3, 1.8, true, "Ship"),
-            ("Charioteer", 20, 32, 18, 25m, 4, 1.5, true, "Chariot"),
-            
-            // Military (only available after wars start - handled separately)
-            ("Warrior", 20, 40, 16, 20m, 5, 3.0, false, null), // Will be restricted by logic
-            ("Guard", 18, 35, 18, 18m, 4, 1.8, false, null),
-            ("Archer", 22, 30, 16, 22m, 5, 2.0, true, "Bow and Arrow"),
-            
-            // Leadership
-            ("Leader", 38, 25, 25, 100m, 10, 1.0, false, null)
-        };
-        
-        foreach (var (name, intel, str, age, salary, status, risk, requiresInv, invName) in jobsData)
+        // ENHANCED: Use ExpandedContent for 75+ jobs
+        var jobsData = ExpandedContent.GetAllJobs();
+
+        foreach (var (name, intel, str, age, salary, status, risk, requiredInvention) in jobsData)
         {
             var job = new Job
             {
@@ -215,16 +153,16 @@ public class Simulator
                 BaseSalary = salary,
                 SocialStatusBonus = status,
                 DeathRiskModifier = risk,
-                RequiresInvention = requiresInv,
+                RequiresInvention = requiredInvention != null,
                 RequiredInventionId = null // Will be set dynamically when inventions are discovered
             };
             _jobs.Add(job);
             _jobsById[job.Id] = job;
         }
-        
+
         // Save jobs to database (this updates their IDs to database auto-increment values)
         _dataAccess.SaveJobs(_jobs);
-        
+
         // Rebuild the _jobsById dictionary with the new database IDs
         _jobsById.Clear();
         foreach (var job in _jobs)
@@ -346,6 +284,20 @@ public class Simulator
             person.DiseaseResistance = 70;
             person.Longevity = 70;
             person.GenerationNumber = 1;
+        }
+
+        // ENHANCED: Evaluate for genius status based on genetics
+        // Note: Genius evaluation happens when traits are mature (age 18+), but we set potential here
+        if (father != null && mother != null && (father.Intelligence >= 80 || mother.Intelligence >= 80))
+        {
+            // High-intelligence parents increase genius potential
+            var (isGenius, geniusType, description) = _geniusSystem.EvaluateGenius(person);
+            if (isGenius && geniusType != null && description != null)
+            {
+                person.IsNotable = true;
+                person.NotableFor = _geniusSystem.GetNotableDescription(geniusType, person);
+                LogEvent("Genius", $"{person.FirstName} {person.LastName} born with exceptional potential: {geniusType}", person.Id);
+            }
         }
 
         return person;
@@ -524,8 +476,12 @@ public class Simulator
                 return 0.0;
         }
 
-        // Calculate total lifespan bonus from all inventions
-        int lifespanBonus = _inventions.Sum(i => i.LifespanBonus);
+        // ENHANCED: Use genetic longevity to extend lifespan
+        // High longevity genes can add up to 20 years of effective lifespan
+        int geneticLifespanBonus = (person.Longevity - 50) / 5; // -10 to +10 years
+
+        // Calculate total lifespan bonus from inventions
+        int lifespanBonus = _inventions.Sum(i => i.LifespanBonus) + geneticLifespanBonus;
         int effectiveAge = Math.Max(0, age - lifespanBonus);
 
         // Base death chance per day - significantly reduced for young people
@@ -538,12 +494,21 @@ public class Simulator
             < 70 => 0.0002 + (effectiveAge - 50) * 0.00005, // Increasing middle age mortality
             _ => 0.001 + (effectiveAge - 70) * 0.0001   // Increasing old age mortality
         };
-        
+
+        // ENHANCED: Use genetics for health modifiers
         double healthMod = 1.0 - (person.Health / 200.0);
+
+        // ENHANCED: Disease resistance reduces death chance
+        double diseaseResistanceMod = 1.0 - (person.DiseaseResistance / 200.0); // 0.5 to 1.0
+
+        // ENHANCED: Hereditary diseases increase death risk
+        double diseasePenalty = person.HasHereditaryDisease ? 1.3 : 1.0;
+
         double jobRisk = 1.0;
         if (person.JobId.HasValue && _jobsById.ContainsKey(person.JobId.Value))
             jobRisk = _jobsById[person.JobId.Value].DeathRiskModifier;
-        return baseChance * (1.0 + healthMod) * jobRisk;
+
+        return baseChance * (1.0 + healthMod) * diseaseResistanceMod * diseasePenalty * jobRisk;
     }
     
     private void HandleSuccession(Person deadRuler)
