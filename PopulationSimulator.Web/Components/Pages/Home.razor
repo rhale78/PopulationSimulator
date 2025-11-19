@@ -873,6 +873,167 @@
         }
     }
 
+    // ============================================================================
+    // SEARCH & FILTER FUNCTIONS
+    // ============================================================================
+
+    private void PerformSearch()
+    {
+        _searchResults = new List<string>();
+
+        if (_searchType == "People")
+        {
+            var people = SimulatorService.GetAllPeople();
+            var currentDate = SimulatorService.GetCurrentDate();
+            var citiesById = SimulatorService.GetCitiesById();
+
+            var filtered = people.Where(p =>
+            {
+                bool matches = true;
+
+                // Name search
+                if (!string.IsNullOrWhiteSpace(_searchQuery))
+                {
+                    var fullName = $"{p.FirstName} {p.LastName}".ToLower();
+                    matches = matches && fullName.Contains(_searchQuery.ToLower());
+                }
+
+                // Gender filter
+                if (!string.IsNullOrEmpty(_filterGender))
+                    matches = matches && p.Gender == _filterGender;
+
+                // Status filter
+                if (!string.IsNullOrEmpty(_filterStatus))
+                    matches = matches && ((p.IsAlive && _filterStatus == "Alive") || (!p.IsAlive && _filterStatus == "Dead"));
+
+                // Age filter
+                var age = p.GetAge(currentDate);
+                if (_filterMinAge.HasValue)
+                    matches = matches && age >= _filterMinAge.Value;
+                if (_filterMaxAge.HasValue)
+                    matches = matches && age <= _filterMaxAge.Value;
+
+                return matches;
+            }).ToList();
+
+            foreach (var person in filtered)
+            {
+                var age = person.GetAge(currentDate);
+                var city = person.CityId.HasValue && citiesById.ContainsKey(person.CityId.Value) ? citiesById[person.CityId.Value].Name : "Nomad";
+                var status = person.IsAlive ? "✅ Alive" : "⚰️ Dead";
+
+                _searchResults.Add($"<td>{person.FirstName} {person.LastName}</td><td>{person.Gender}</td><td>{age}</td><td>{status}</td><td>{city}</td>");
+            }
+        }
+        else if (_searchType == "Cities")
+        {
+            var cities = SimulatorService.GetAllCities();
+            var countriesById = SimulatorService.GetCountriesById();
+
+            var filtered = cities.Where(c =>
+            {
+                bool matches = true;
+
+                // Name search
+                if (!string.IsNullOrWhiteSpace(_searchQuery))
+                    matches = matches && c.Name.ToLower().Contains(_searchQuery.ToLower());
+
+                // Geography filter
+                if (!string.IsNullOrEmpty(_filterGeography))
+                    matches = matches && c.Geography == _filterGeography;
+
+                // Climate filter
+                if (!string.IsNullOrEmpty(_filterClimate))
+                    matches = matches && c.Climate == _filterClimate;
+
+                // Min population filter
+                if (_filterMinPopulation.HasValue)
+                    matches = matches && c.Population >= _filterMinPopulation.Value;
+
+                return matches;
+            }).ToList();
+
+            foreach (var city in filtered)
+            {
+                var country = city.CountryId.HasValue && countriesById.ContainsKey(city.CountryId.Value) ? countriesById[city.CountryId.Value].Name : "Independent";
+
+                _searchResults.Add($"<td>{city.Name}</td><td>{city.Population}</td><td>{city.Geography}</td><td>{city.Climate}</td><td>{country}</td>");
+            }
+        }
+        else if (_searchType == "Countries")
+        {
+            var countries = SimulatorService.GetAllCountries();
+
+            var filtered = countries.Where(c =>
+            {
+                bool matches = true;
+
+                // Name search
+                if (!string.IsNullOrWhiteSpace(_searchQuery))
+                    matches = matches && c.Name.ToLower().Contains(_searchQuery.ToLower());
+
+                return matches;
+            }).ToList();
+
+            foreach (var country in filtered)
+            {
+                _searchResults.Add($"<td>{country.Name}</td><td>{country.Population}</td><td>{country.GovernmentType}</td><td>{country.Wealth:F0}</td><td>{country.MilitaryStrength}</td>");
+            }
+        }
+        else if (_searchType == "Inventions")
+        {
+            var inventions = SimulatorService.GetAllInventions();
+            var peopleById = SimulatorService.GetPeopleById();
+            var deadPeopleById = SimulatorService.GetDeadPeopleById();
+
+            var filtered = inventions.Where(inv =>
+            {
+                bool matches = true;
+
+                // Name search
+                if (!string.IsNullOrWhiteSpace(_searchQuery))
+                    matches = matches && inv.Name.ToLower().Contains(_searchQuery.ToLower());
+
+                return matches;
+            }).ToList();
+
+            foreach (var invention in filtered)
+            {
+                var inventor = "Unknown";
+                if (invention.InventorId.HasValue)
+                {
+                    if (peopleById.ContainsKey(invention.InventorId.Value))
+                    {
+                        var p = peopleById[invention.InventorId.Value];
+                        inventor = $"{p.FirstName} {p.LastName}";
+                    }
+                    else if (deadPeopleById.ContainsKey(invention.InventorId.Value))
+                    {
+                        var p = deadPeopleById[invention.InventorId.Value];
+                        inventor = $"{p.FirstName} {p.LastName}";
+                    }
+                }
+
+                _searchResults.Add($"<td>{invention.Name}</td><td>{invention.Category}</td><td>{inventor}</td><td>{invention.DiscoveredDate.Year}</td>");
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        _searchQuery = string.Empty;
+        _filterGender = string.Empty;
+        _filterStatus = string.Empty;
+        _filterMinAge = null;
+        _filterMaxAge = null;
+        _filterGeography = string.Empty;
+        _filterClimate = string.Empty;
+        _filterMinPopulation = null;
+        _searchResults = null;
+    }
+
     private RenderFragment RenderFamilyTreeWithIndent(FamilyTreeNode node, int depth)
     {
         return builder =>
