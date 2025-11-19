@@ -7,6 +7,7 @@ public class Simulator
 {
     private readonly Random _random;
     private readonly NameGenerator _nameGenerator;
+    private readonly GeneticsEngine _geneticsEngine;
     private readonly DataAccessLayer _dataAccess;
     
     // In-memory collections
@@ -43,6 +44,7 @@ public class Simulator
     {
         _random = new Random();
         _nameGenerator = new NameGenerator(_random);
+        _geneticsEngine = new GeneticsEngine(_random);
         _dataAccess = new DataAccessLayer();
         _currentDate = new DateTime(1, 1, 1); // Start at year 1
     }
@@ -63,7 +65,7 @@ public class Simulator
     {
         // Set current date to year 20 so Adam and Eve start at age 20
         _currentDate = new DateTime(21, 1, 1);
-        
+
         // Create Adam and Eve at age 20 with perfect traits (100 for all stats)
         var adam = CreatePerson("Adam", "", "Male", null, null);
         adam.BirthDate = new DateTime(1, 1, 1); // Born in year 1, currently age 20
@@ -78,7 +80,19 @@ public class Simulator
         adam.Wisdom = 100;
         adam.Beauty = 100;
         adam.Height = 180;
-        
+        adam.Weight = 80;
+        adam.BuildType = "Muscular";
+        adam.SkinTone = "Fair";
+        adam.DNASequence = _geneticsEngine.GeneratePrimordialDNA();
+        adam.BloodType = "O+";
+        adam.GeneticMarkers = "HLA-A,HLA-B,APOE";
+        adam.HereditaryConditions = "None";
+        adam.DiseaseResistance = 100;
+        adam.Longevity = 100;
+        adam.GenerationNumber = 0;
+        adam.IsNotable = true;
+        adam.NotableFor = "First Human - Father of Humanity";
+
         var eve = CreatePerson("Eve", "", "Female", null, null);
         eve.BirthDate = new DateTime(1, 1, 1); // Born in year 1, currently age 20
         eve.Intelligence = 100;
@@ -92,6 +106,18 @@ public class Simulator
         eve.Wisdom = 100;
         eve.Beauty = 100;
         eve.Height = 168;
+        eve.Weight = 65;
+        eve.BuildType = "Average";
+        eve.SkinTone = "Fair";
+        eve.DNASequence = _geneticsEngine.GeneratePrimordialDNA();
+        eve.BloodType = "O+";
+        eve.GeneticMarkers = "HLA-C,BRCA1,CCR5";
+        eve.HereditaryConditions = "None";
+        eve.DiseaseResistance = 100;
+        eve.Longevity = 100;
+        eve.GenerationNumber = 0;
+        eve.IsNotable = true;
+        eve.NotableFor = "First Human - Mother of Humanity";
         
         AddPerson(adam);
         AddPerson(eve);
@@ -209,9 +235,22 @@ public class Simulator
     
     private Person CreatePerson(string firstName, string lastName, string gender, long? fatherId, long? motherId)
     {
-        Person? father = fatherId.HasValue && _peopleById.ContainsKey(fatherId.Value) ? _peopleById[fatherId.Value] : null;
-        Person? mother = motherId.HasValue && _peopleById.ContainsKey(motherId.Value) ? _peopleById[motherId.Value] : null;
-        
+        // Try to find father and mother in both living and dead people
+        Person? father = null;
+        Person? mother = null;
+
+        if (fatherId.HasValue)
+        {
+            father = _peopleById.ContainsKey(fatherId.Value) ? _peopleById[fatherId.Value] :
+                     _deadPeopleById.ContainsKey(fatherId.Value) ? _deadPeopleById[fatherId.Value] : null;
+        }
+
+        if (motherId.HasValue)
+        {
+            mother = _peopleById.ContainsKey(motherId.Value) ? _peopleById[motherId.Value] :
+                     _deadPeopleById.ContainsKey(motherId.Value) ? _deadPeopleById[motherId.Value] : null;
+        }
+
         var person = new Person
         {
             Id = _nextTempId--,
@@ -223,32 +262,72 @@ public class Simulator
             MotherId = motherId,
             IsAlive = true,
             EyeColor = _nameGenerator.GenerateEyeColor(),
-            HairColor = _nameGenerator.GenerateHairColor()
+            HairColor = _nameGenerator.GenerateHairColor(),
+            SkinTone = "Fair" // Will be inherited if parents exist
         };
-        
-        // Inherit and mutate traits
+
+        // Inherit and mutate traits using advanced genetics
         if (father != null && mother != null)
         {
-            person.Intelligence = InheritTrait(father.Intelligence, mother.Intelligence);
-            person.Strength = InheritTrait(father.Strength, mother.Strength);
-            person.Health = InheritTrait(father.Health, mother.Health);
-            person.Fertility = InheritTrait(father.Fertility, mother.Fertility);
-            person.Charisma = InheritTrait(father.Charisma, mother.Charisma);
-            person.Creativity = InheritTrait(father.Creativity, mother.Creativity);
-            person.Leadership = InheritTrait(father.Leadership, mother.Leadership);
-            person.Aggression = InheritTrait(father.Aggression, mother.Aggression);
-            person.Wisdom = InheritTrait(father.Wisdom, mother.Wisdom);
-            person.Beauty = InheritTrait(father.Beauty, mother.Beauty);
-            person.Height = InheritTrait(father.Height, mother.Height);
-            
+            // Use genetics engine for trait inheritance
+            person.Intelligence = _geneticsEngine.InheritTrait(father.Intelligence, mother.Intelligence);
+            person.Strength = _geneticsEngine.InheritTrait(father.Strength, mother.Strength);
+            person.Health = _geneticsEngine.InheritTrait(father.Health, mother.Health);
+            person.Fertility = _geneticsEngine.InheritTrait(father.Fertility, mother.Fertility);
+            person.Charisma = _geneticsEngine.InheritTrait(father.Charisma, mother.Charisma);
+            person.Creativity = _geneticsEngine.InheritTrait(father.Creativity, mother.Creativity);
+            person.Leadership = _geneticsEngine.InheritTrait(father.Leadership, mother.Leadership);
+            person.Aggression = _geneticsEngine.InheritTrait(father.Aggression, mother.Aggression);
+            person.Wisdom = _geneticsEngine.InheritTrait(father.Wisdom, mother.Wisdom);
+            person.Beauty = _geneticsEngine.InheritTrait(father.Beauty, mother.Beauty);
+            person.Height = _geneticsEngine.InheritTrait(father.Height, mother.Height);
+            person.Weight = _geneticsEngine.InheritTrait(father.Weight, mother.Weight);
+
+            // Advanced genetics
+            person.DNASequence = _geneticsEngine.InheritDNA(father.DNASequence, mother.DNASequence);
+            person.BloodType = _geneticsEngine.InheritBloodType(father.BloodType, mother.BloodType);
+            person.GeneticMarkers = _geneticsEngine.GenerateGeneticMarkers(father.GeneticMarkers, mother.GeneticMarkers);
+
+            var (conditions, hasDisease) = _geneticsEngine.InheritConditions(father, mother);
+            person.HereditaryConditions = conditions;
+            person.HasHereditaryDisease = hasDisease;
+
+            person.DiseaseResistance = _geneticsEngine.CalculateDiseaseResistance(father, mother, person.DNASequence);
+            person.Longevity = _geneticsEngine.CalculateLongevity(father, mother, person.DNASequence);
+
+            // Determine build type based on strength and weight
+            if (person.Strength > 70 && person.Weight > 75)
+                person.BuildType = "Muscular";
+            else if (person.Weight < 60)
+                person.BuildType = "Slim";
+            else if (person.Weight > 85)
+                person.BuildType = "Heavy";
+            else
+                person.BuildType = "Average";
+
+            // Generation tracking
+            person.GenerationNumber = Math.Max(father.GenerationNumber, mother.GenerationNumber) + 1;
+
             // Inherit location and religion
             person.CityId = father.CityId ?? mother.CityId;
             person.CountryId = father.CountryId ?? mother.CountryId;
             person.ReligionId = father.ReligionId ?? mother.ReligionId;
+
+            // Update parent's children count
+            if (father.IsAlive && _peopleById.ContainsKey(father.Id))
+            {
+                father.ChildrenBorn++;
+                father.TotalChildren++;
+            }
+            if (mother.IsAlive && _peopleById.ContainsKey(mother.Id))
+            {
+                mother.ChildrenBorn++;
+                mother.TotalChildren++;
+            }
         }
         else
         {
-            // Default traits for first generation
+            // Default traits for first generation (should not happen with Adam/Eve)
             person.Intelligence = _random.Next(40, 90);
             person.Strength = _random.Next(40, 90);
             person.Health = _random.Next(80, 100);
@@ -260,8 +339,15 @@ public class Simulator
             person.Wisdom = _random.Next(40, 90);
             person.Beauty = _random.Next(40, 90);
             person.Height = gender == "Male" ? _random.Next(165, 190) : _random.Next(155, 180);
+            person.Weight = gender == "Male" ? _random.Next(60, 90) : _random.Next(50, 75);
+            person.BuildType = "Average";
+            person.DNASequence = _geneticsEngine.GeneratePrimordialDNA();
+            person.BloodType = "O+";
+            person.DiseaseResistance = 70;
+            person.Longevity = 70;
+            person.GenerationNumber = 1;
         }
-        
+
         return person;
     }
     
@@ -356,26 +442,29 @@ public class Simulator
     {
         // Cache living people to avoid multiple enumerations
         var livingPeople = GetLivingPeople().ToList(); // ToList to avoid collection modification
-        
+
         foreach (var person in livingPeople)
         {
             int age = person.GetAge(_currentDate);
             double deathChance = CalculateDeathChance(person, age);
-            
+
             if (_random.NextDouble() < deathChance)
             {
                 person.IsAlive = false;
                 person.DeathDate = _currentDate;
                 _livingCacheValid = false; // Invalidate cache when someone dies
-                
+
+                // Determine cause of death
+                person.CauseOfDeath = DetermineCauseOfDeath(person, age);
+
                 // Add to dead people dictionary for later lookup
                 if (!_deadPeopleById.ContainsKey(person.Id))
                 {
                     _deadPeopleById[person.Id] = person;
                 }
-                
-                LogEvent("Death", $"{person.FirstName} {person.LastName} died at age {age}", person.Id);
-                
+
+                LogEvent("Death", $"{person.FirstName} {person.LastName} died at age {age} ({person.CauseOfDeath})", person.Id);
+
                 // Handle succession if ruler
                 if (person.IsRuler && person.CountryId.HasValue)
                 {
@@ -383,6 +472,47 @@ public class Simulator
                 }
             }
         }
+    }
+
+    private string DetermineCauseOfDeath(Person person, int age)
+    {
+        // Determine most likely cause based on age, health, job, etc.
+        if (age < 1)
+            return "Infant mortality";
+        if (age < 5)
+            return "Childhood illness";
+
+        // Job-related deaths
+        if (person.JobId.HasValue && _jobsById.ContainsKey(person.JobId.Value))
+        {
+            var job = _jobsById[person.JobId.Value];
+            if (job.DeathRiskModifier > 2.0 && _random.Next(100) < 40)
+            {
+                if (job.Name.Contains("Warrior") || job.Name.Contains("Guard"))
+                    return "Combat";
+                if (job.Name.Contains("Miner"))
+                    return "Mining accident";
+                if (job.Name.Contains("Sailor"))
+                    return "Shipwreck";
+                return "Occupational hazard";
+            }
+        }
+
+        // Health-related deaths
+        if (person.Health < 30)
+            return "Chronic illness";
+        if (person.HasHereditaryDisease && _random.Next(100) < 30)
+            return $"Hereditary condition ({person.HereditaryConditions})";
+
+        // Age-related deaths
+        if (age > 70)
+            return "Old age";
+        if (age > 50)
+            return "Age-related illness";
+
+        // Random causes
+        var randomCauses = new[] { "Disease", "Accident", "Natural causes", "Fever", "Infection" };
+        return randomCauses[_random.Next(randomCauses.Length)];
     }
     
     private double CalculateDeathChance(Person person, int age)
@@ -636,42 +766,58 @@ public class Simulator
     {
         // Get living people once
         var livingPeople = GetLivingPeople();
-        
+
         // Cache living count for pregnancy chance calculation
         int totalPeople = livingPeople.Count;
-        
-        // Determine pregnancy chance based on population size
-        double basePregnancyChance = totalPeople < 50 ? 0.20 :
-                                totalPeople < 150 ? 0.15 :
-                                totalPeople < 300 ? 0.10 :
-                                totalPeople < 500 ? 0.05 :
-                                0.02;
-        
+
+        // IMPROVED: Higher base rates to ensure sustainable growth, especially early on
+        double basePregnancyChance = totalPeople < 20 ? 0.30 :   // Very high for Adam/Eve's children
+                                     totalPeople < 50 ? 0.25 :   // High for early generations
+                                     totalPeople < 150 ? 0.18 :  // Moderate as population grows
+                                     totalPeople < 300 ? 0.12 :  // Still good growth rate
+                                     totalPeople < 500 ? 0.08 :  // Slowing down
+                                     totalPeople < 1000 ? 0.04 : // Controlled growth
+                                     0.02;                       // Steady state
+
         // Single pass through people to find eligible females
         foreach (var female in livingPeople)
         {
             if (!CanHaveChildren(female)) continue;
-            
+
             // Calculate pregnancy chance with modifiers
             double pregnancyChance = basePregnancyChance;
             pregnancyChance *= (female.Fertility / 100.0);
             pregnancyChance *= (female.Health / 100.0);
-            
+
+            // IMPROVED: Bonus for high longevity genetics (better reproductive health)
+            if (female.Longevity > 70)
+                pregnancyChance *= 1.1;
+
+            // IMPROVED: Early generation bonus (Adam/Eve and first few generations)
+            if (female.GenerationNumber <= 2)
+                pregnancyChance *= 1.2;
+
+            // IMPROVED: Reduce disease resistance penalty
+            if (female.DiseaseResistance < 30)
+                pregnancyChance *= 0.8;
+
             if (_random.NextDouble() < pregnancyChance)
             {
                 female.IsPregnant = true;
                 female.PregnancyDueDate = _currentDate.AddDays(270); // 9 months
                 female.PregnancyFatherId = female.SpouseId;
-                
-                // Twins/triplets chance - twins 4%, triplets 1%
+
+                // IMPROVED: Higher chance of twins/triplets for high fertility
                 double multipleChance = _random.NextDouble();
-                if (multipleChance < 0.01)
-                    female.PregnancyMultiplier = 3; // 1% triplets
-                else if (multipleChance < 0.05)
-                    female.PregnancyMultiplier = 2; // 4% twins (1% + 4% = 5% total)
+                double twinBonus = female.Fertility > 80 ? 1.5 : 1.0;
+
+                if (multipleChance < (0.01 * twinBonus))
+                    female.PregnancyMultiplier = 3; // Triplets
+                else if (multipleChance < (0.06 * twinBonus))
+                    female.PregnancyMultiplier = 2; // Twins (increased from 5% to 6%)
                 else
                     female.PregnancyMultiplier = 1;
-                
+
                 string multiplier = female.PregnancyMultiplier > 1 ? $" (expecting {female.PregnancyMultiplier})" : "";
                 LogEvent("Pregnancy", $"{female.FirstName} {female.LastName} is pregnant{multiplier}", female.Id);
             }
@@ -1309,6 +1455,16 @@ public class SimulationStats
     public List<Event> RecentEvents { get; set; } = new();
     public List<JobStatistic> TopJobs { get; set; } = new();
     public List<FamilyTreeNode> FamilyTrees { get; set; } = new();
+
+    // ENHANCED: New detailed statistics
+    public List<PersonSummary> AlivePeople { get; set; } = new();
+    public List<PersonSummary> RecentDeaths { get; set; } = new();
+    public List<PersonSummary> RecentBirths { get; set; } = new();
+    public List<PersonSummary> NotablePeople { get; set; } = new();
+    public Dictionary<string, int> BloodTypeDistribution { get; set; } = new();
+    public int TotalWithHereditaryDiseases { get; set; }
+    public double AverageLongevity { get; set; }
+    public double AverageDiseaseResistance { get; set; }
 }
 
 public class JobStatistic
@@ -1327,4 +1483,23 @@ public class FamilyTreeNode
     public bool IsAlive { get; set; }
     public string SpouseName { get; set; } = string.Empty;
     public List<FamilyTreeNode> Children { get; set; } = new();
+}
+
+public class PersonSummary
+{
+    public long Id { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string Gender { get; set; } = string.Empty;
+    public int Age { get; set; }
+    public bool IsAlive { get; set; }
+    public string BloodType { get; set; } = string.Empty;
+    public string Job { get; set; } = string.Empty;
+    public string City { get; set; } = string.Empty;
+    public string CauseOfDeath { get; set; } = string.Empty;
+    public int ChildrenCount { get; set; }
+    public int GenerationNumber { get; set; }
+    public bool IsNotable { get; set; }
+    public string NotableFor { get; set; } = string.Empty;
+    public bool HasHereditaryDisease { get; set; }
+    public string HereditaryConditions { get; set; } = string.Empty;
 }
