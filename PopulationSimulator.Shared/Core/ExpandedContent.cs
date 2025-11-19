@@ -166,123 +166,125 @@ public static class ExpandedContent
 
     /// <summary>
     /// Get all 75+ jobs with requirements and characteristics
+    /// Now includes gender and age restrictions for realism
     /// </summary>
-    public static List<(string name, int intel, int str, int age, decimal salary, int status, double risk, string? requiredInvention)> GetAllJobs()
+    public static List<(string name, int intel, int str, int minAge, int? maxAge, string gender, decimal salary, int status, double risk, string? requiredInvention)> GetAllJobs()
     {
-        return new List<(string, int, int, int, decimal, int, double, string?)>
+        return new List<(string, int, int, int, int?, string, decimal, int, double, string?)>
         {
             // BASIC LABOR (No requirements)
-            ("Farmer", 10, 20, 12, 10m, 1, 1.0, null),
-            ("Hunter", 15, 30, 14, 15m, 2, 1.5, null),
-            ("Gatherer", 10, 15, 12, 8m, 1, 0.8, null),
-            ("Fisherman", 12, 25, 14, 12m, 2, 1.2, null),
-            ("Shepherd", 10, 20, 12, 10m, 1, 0.9, null),
-            ("Builder", 15, 35, 16, 20m, 3, 1.3, null),
-            ("Servant", 8, 12, 12, 5m, 0, 0.9, null),
-            ("Laborer", 8, 30, 14, 8m, 1, 1.5, null),
-            ("Herder", 10, 20, 12, 10m, 1, 1.0, null),
-            ("Woodcutter", 10, 35, 16, 12m, 1, 1.8, null),
+            ("Farmer", 10, 20, 12, null, "Any", 10m, 1, 1.0, null),
+            ("Hunter", 15, 30, 14, 50, "Male", 15m, 2, 1.5, null), // Physically demanding, age limit
+            ("Gatherer", 10, 15, 12, null, "Any", 8m, 1, 0.8, null),
+            ("Fisherman", 12, 25, 14, 55, "Male", 12m, 2, 1.2, null), // Physically demanding
+            ("Shepherd", 10, 20, 12, null, "Any", 10m, 1, 0.9, null),
+            ("Builder", 15, 35, 16, 55, "Male", 20m, 3, 1.3, null), // Heavy physical labor
+            ("Servant", 8, 12, 12, null, "Any", 5m, 0, 0.9, null),
+            ("Laborer", 8, 30, 14, 60, "Any", 8m, 1, 1.5, null),
+            ("Herder", 10, 20, 12, null, "Any", 10m, 1, 1.0, null),
+            ("Woodcutter", 10, 35, 16, 55, "Male", 12m, 1, 1.8, null), // Dangerous and physical
 
             // AGRICULTURE
-            ("Miller", 15, 25, 16, 15m, 2, 1.0, "Milling"),
-            ("Vintner", 18, 15, 18, 25m, 3, 0.8, "Wine Making"),
-            ("Brewer", 18, 15, 16, 15m, 2, 0.8, "Beer Brewing"),
-            ("Baker", 15, 15, 14, 12m, 2, 0.8, "Bread Baking"),
-            ("Cheese Maker", 15, 15, 16, 14m, 2, 0.8, "Cheese Making"),
+            ("Miller", 15, 25, 16, 60, "Any", 15m, 2, 1.0, "Milling"),
+            ("Vintner", 18, 15, 18, null, "Any", 25m, 3, 0.8, "Wine Making"),
+            ("Brewer", 18, 15, 16, null, "Any", 15m, 2, 0.8, "Beer Brewing"),
+            ("Baker", 15, 15, 14, null, "Any", 12m, 2, 0.8, "Bread Baking"),
+            ("Cheese Maker", 15, 15, 16, null, "Any", 14m, 2, 0.8, "Cheese Making"),
 
             // CRAFTS
-            ("Potter", 20, 15, 16, 18m, 3, 0.9, "Pottery"),
-            ("Weaver", 18, 15, 16, 16m, 3, 0.8, "Weaving"),
-            ("Tanner", 15, 20, 16, 15m, 2, 1.0, "Tanning"),
-            ("Glassmaker", 30, 20, 18, 35m, 5, 1.2, "Glassmaking"),
-            ("Dyer", 18, 15, 16, 16m, 3, 0.9, "Dyeing"),
-            ("Basket Weaver", 12, 15, 14, 10m, 2, 0.8, "Basket Weaving"),
-            ("Rope Maker", 15, 20, 14, 12m, 2, 0.9, "Rope Making"),
-            ("Leather Worker", 18, 18, 16, 18m, 3, 0.9, "Leather Working"),
-            ("Tailor", 20, 12, 16, 20m, 3, 0.7, "Tailoring"),
-            ("Carpet Weaver", 22, 15, 18, 25m, 4, 0.8, "Carpet Weaving"),
+            ("Potter", 20, 15, 16, null, "Any", 18m, 3, 0.9, "Pottery"),
+            ("Weaver", 18, 15, 16, null, "Female", 16m, 3, 0.8, "Weaving"), // Traditionally female
+            ("Tanner", 15, 20, 16, 60, "Male", 15m, 2, 1.0, "Tanning"), // Physically demanding, unpleasant
+            ("Glassmaker", 30, 20, 18, 60, "Male", 35m, 5, 1.2, "Glassmaking"), // High heat, dangerous
+            ("Dyer", 18, 15, 16, null, "Any", 16m, 3, 0.9, "Dyeing"),
+            ("Basket Weaver", 12, 15, 14, null, "Any", 10m, 2, 0.8, "Basket Weaving"),
+            ("Rope Maker", 15, 20, 14, null, "Any", 12m, 2, 0.9, "Rope Making"),
+            ("Leather Worker", 18, 18, 16, null, "Any", 18m, 3, 0.9, "Leather Working"),
+            ("Tailor", 20, 12, 16, null, "Any", 20m, 3, 0.7, "Tailoring"),
+            ("Carpet Weaver", 22, 15, 18, null, "Any", 25m, 4, 0.8, "Carpet Weaving"),
 
-            // METALLURGY
-            ("Copper Smith", 25, 35, 18, 28m, 4, 1.4, "Copper Working"),
-            ("Bronze Smith", 28, 38, 18, 32m, 5, 1.5, "Bronze"),
-            ("Iron Smith", 30, 40, 18, 38m, 6, 1.6, "Iron Working"),
-            ("Blacksmith", 32, 40, 18, 42m, 6, 1.6, "Steel"),
-            ("Goldsmith", 35, 25, 20, 50m, 7, 1.0, "Gold Working"),
-            ("Silversmith", 35, 25, 20, 48m, 7, 1.0, "Silver Working"),
-            ("Smelter", 28, 40, 18, 30m, 4, 1.8, "Smelting"),
-            ("Caster", 30, 35, 18, 32m, 4, 1.5, "Casting"),
-            ("Weaponsmith", 35, 38, 20, 45m, 6, 1.3, "Forging"),
+            // METALLURGY (Heavy physical labor, high heat - male dominated)
+            ("Copper Smith", 25, 35, 18, 60, "Male", 28m, 4, 1.4, "Copper Working"),
+            ("Bronze Smith", 28, 38, 18, 60, "Male", 32m, 5, 1.5, "Bronze"),
+            ("Iron Smith", 30, 40, 18, 60, "Male", 38m, 6, 1.6, "Iron Working"),
+            ("Blacksmith", 32, 40, 18, 60, "Male", 42m, 6, 1.6, "Steel"),
+            ("Goldsmith", 35, 25, 20, null, "Any", 50m, 7, 1.0, "Gold Working"), // Fine work, less physical
+            ("Silversmith", 35, 25, 20, null, "Any", 48m, 7, 1.0, "Silver Working"),
+            ("Smelter", 28, 40, 18, 55, "Male", 30m, 4, 1.8, "Smelting"), // Very dangerous
+            ("Caster", 30, 35, 18, 60, "Male", 32m, 4, 1.5, "Casting"),
+            ("Weaponsmith", 35, 38, 20, 60, "Male", 45m, 6, 1.3, "Forging"),
 
-            // CONSTRUCTION
-            ("Mason", 20, 38, 16, 22m, 3, 1.4, "Brick Making"),
-            ("Architect", 40, 20, 22, 60m, 8, 0.8, "Architecture"),
-            ("Engineer", 42, 25, 22, 65m, 8, 1.0, "Mathematics"),
-            ("Stonemason", 22, 40, 16, 25m, 3, 1.5, "Stone Tools"),
-            ("Carpenter", 18, 30, 16, 20m, 3, 1.3, null),
-            ("Roofer", 15, 30, 16, 18m, 2, 1.8, null),
-            ("Bricklayer", 18, 35, 16, 20m, 3, 1.4, "Brick Making"),
+            // CONSTRUCTION (Heavy labor - age limits)
+            ("Mason", 20, 38, 16, 60, "Male", 22m, 3, 1.4, "Brick Making"),
+            ("Architect", 40, 20, 22, null, "Any", 60m, 8, 0.8, "Architecture"), // Mental work, can work older
+            ("Engineer", 42, 25, 22, null, "Any", 65m, 8, 1.0, "Mathematics"),
+            ("Stonemason", 22, 40, 16, 60, "Male", 25m, 3, 1.5, "Stone Tools"),
+            ("Carpenter", 18, 30, 16, 60, "Male", 20m, 3, 1.3, null),
+            ("Roofer", 15, 30, 16, 55, "Male", 18m, 2, 1.8, null), // Dangerous, age limit
+            ("Bricklayer", 18, 35, 16, 60, "Male", 20m, 3, 1.4, "Brick Making"),
 
-            // PROFESSIONAL
-            ("Merchant", 30, 10, 18, 35m, 5, 0.9, null),
-            ("Scribe", 40, 8, 20, 30m, 6, 0.6, "Writing"),
-            ("Priest", 35, 8, 20, 30m, 7, 0.7, null),
-            ("Healer", 38, 10, 20, 40m, 6, 0.8, "Herbal Medicine"),
-            ("Physician", 42, 10, 22, 55m, 8, 0.7, "Surgery"),
-            ("Scholar", 42, 8, 22, 35m, 7, 0.6, "Writing"),
-            ("Teacher", 38, 8, 20, 28m, 6, 0.6, "School"),
-            ("Lawyer", 45, 8, 25, 50m, 8, 0.6, "Writing"),
-            ("Judge", 48, 8, 30, 60m, 9, 0.6, "Laws"),
-            ("Librarian", 40, 8, 20, 25m, 6, 0.5, "Library"),
-            ("Scientist", 50, 8, 25, 40m, 8, 0.6, "Scientific Method"),
-            ("Mathematician", 52, 8, 22, 38m, 7, 0.5, "Mathematics"),
-            ("Astronomer", 48, 8, 25, 42m, 8, 0.6, "Astronomy"),
-            ("Pharmacist", 45, 10, 22, 45m, 7, 0.7, "Pharmacy"),
+            // PROFESSIONAL (No age or gender restrictions, knowledge-based)
+            ("Merchant", 30, 10, 18, null, "Any", 35m, 5, 0.9, null),
+            ("Scribe", 40, 8, 20, null, "Any", 30m, 6, 0.6, "Writing"),
+            ("Priest", 35, 8, 20, null, "Male", 30m, 7, 0.7, null), // Historically male dominated
+            ("Healer", 38, 10, 20, null, "Female", 40m, 6, 0.8, "Herbal Medicine"), // Traditionally female
+            ("Midwife", 35, 10, 25, null, "Female", 25m, 5, 0.9, null), // Female only
+            ("Physician", 42, 10, 22, null, "Any", 55m, 8, 0.7, "Surgery"),
+            ("Scholar", 42, 8, 22, null, "Any", 35m, 7, 0.6, "Writing"),
+            ("Teacher", 38, 8, 20, null, "Any", 28m, 6, 0.6, "School"),
+            ("Lawyer", 45, 8, 25, null, "Any", 50m, 8, 0.6, "Writing"),
+            ("Judge", 48, 8, 30, null, "Any", 60m, 9, 0.6, "Laws"),
+            ("Librarian", 40, 8, 20, null, "Any", 25m, 6, 0.5, "Library"),
+            ("Scientist", 50, 8, 25, null, "Any", 40m, 8, 0.6, "Scientific Method"),
+            ("Mathematician", 52, 8, 22, null, "Any", 38m, 7, 0.5, "Mathematics"),
+            ("Astronomer", 48, 8, 25, null, "Any", 42m, 8, 0.6, "Astronomy"),
+            ("Pharmacist", 45, 10, 22, null, "Any", 45m, 7, 0.7, "Pharmacy"),
 
-            // ARTS & CULTURE
-            ("Artist", 30, 10, 18, 25m, 4, 0.7, "Painting"),
-            ("Sculptor", 32, 20, 18, 28m, 5, 0.8, "Sculpture"),
-            ("Musician", 25, 10, 16, 20m, 4, 0.7, "Music"),
-            ("Poet", 35, 8, 18, 22m, 5, 0.6, "Poetry"),
-            ("Actor", 28, 10, 18, 18m, 4, 0.7, "Theater"),
-            ("Dancer", 20, 25, 16, 15m, 3, 1.0, "Dance"),
-            ("Singer", 25, 10, 16, 18m, 4, 0.6, "Music"),
-            ("Jeweler", 32, 18, 18, 35m, 5, 0.9, "Jewelry"),
+            // ARTS & CULTURE (Generally no restrictions, talent-based)
+            ("Artist", 30, 10, 18, null, "Any", 25m, 4, 0.7, "Painting"),
+            ("Sculptor", 32, 20, 18, 65, "Male", 28m, 5, 0.8, "Sculpture"), // Physical work with stone
+            ("Musician", 25, 10, 16, null, "Any", 20m, 4, 0.7, "Music"),
+            ("Poet", 35, 8, 18, null, "Any", 22m, 5, 0.6, "Poetry"),
+            ("Actor", 28, 10, 18, null, "Any", 18m, 4, 0.7, "Theater"),
+            ("Dancer", 20, 25, 16, 35, "Any", 15m, 3, 1.0, "Dance"), // Physically demanding, youth career
+            ("Singer", 25, 10, 16, null, "Any", 18m, 4, 0.6, "Music"),
+            ("Jeweler", 32, 18, 18, null, "Any", 35m, 5, 0.9, "Jewelry"),
 
             // FOOD & HOSPITALITY
-            ("Cook", 15, 15, 14, 12m, 2, 0.8, "Cooking"),
-            ("Butcher", 12, 25, 14, 14m, 2, 1.0, null),
-            ("Innkeeper", 25, 15, 20, 22m, 3, 0.8, null),
-            ("Tavern Keeper", 22, 18, 18, 20m, 3, 0.9, "Beer Brewing"),
+            ("Cook", 15, 15, 14, null, "Any", 12m, 2, 0.8, "Cooking"),
+            ("Butcher", 12, 25, 14, 60, "Male", 14m, 2, 1.0, null), // Physical, dangerous
+            ("Innkeeper", 25, 15, 20, null, "Any", 22m, 3, 0.8, null),
+            ("Tavern Keeper", 22, 18, 18, null, "Any", 20m, 3, 0.9, "Beer Brewing"),
 
-            // TRANSPORTATION
-            ("Carter", 12, 25, 16, 16m, 2, 1.1, "Cart"),
-            ("Sailor", 18, 30, 16, 20m, 3, 1.8, "Ship"),
-            ("Charioteer", 20, 32, 18, 25m, 4, 1.5, "Chariot"),
-            ("Ferryman", 15, 25, 16, 14m, 2, 1.3, "Ship"),
-            ("Shipwright", 35, 30, 20, 40m, 5, 1.2, "Ship"),
+            // TRANSPORTATION (Physical, dangerous - age limits)
+            ("Carter", 12, 25, 16, 60, "Male", 16m, 2, 1.1, "Cart"),
+            ("Sailor", 18, 30, 16, 50, "Male", 20m, 3, 1.8, "Ship"), // Very dangerous, age limit
+            ("Charioteer", 20, 32, 18, 45, "Male", 25m, 4, 1.5, "Chariot"), // Combat-related, prime age only
+            ("Ferryman", 15, 25, 16, 65, "Male", 14m, 2, 1.3, "Ship"),
+            ("Shipwright", 35, 30, 20, 60, "Male", 40m, 5, 1.2, "Ship"),
 
-            // MINING & EXTRACTION
-            ("Miner", 12, 42, 16, 25m, 3, 2.5, null),
-            ("Quarryman", 12, 40, 16, 22m, 2, 2.3, null),
-            ("Prospector", 25, 30, 18, 28m, 3, 1.8, null),
+            // MINING & EXTRACTION (Very dangerous, physical - male only, age limits)
+            ("Miner", 12, 42, 16, 50, "Male", 25m, 3, 2.5, null), // Extremely dangerous
+            ("Quarryman", 12, 40, 16, 55, "Male", 22m, 2, 2.3, null),
+            ("Prospector", 25, 30, 18, 60, "Male", 28m, 3, 1.8, null),
 
-            // MILITARY (Only during wars)
-            ("Warrior", 20, 40, 16, 20m, 5, 3.0, null),
-            ("Guard", 18, 35, 18, 18m, 4, 1.8, null),
-            ("Archer", 22, 30, 16, 22m, 5, 2.0, "Bow and Arrow"),
-            ("Cavalry", 25, 35, 18, 28m, 6, 2.5, "Chariot"),
-            ("Officer", 35, 30, 25, 40m, 7, 1.5, "Tactics"),
-            ("General", 45, 35, 30, 80m, 10, 1.2, "Tactics"),
+            // MILITARY (Combat roles - male only, prime age ranges)
+            ("Warrior", 20, 40, 16, 45, "Male", 20m, 5, 3.0, null), // Peak fighting age
+            ("Guard", 18, 35, 18, 55, "Male", 18m, 4, 1.8, null), // Can guard longer
+            ("Archer", 22, 30, 16, 50, "Male", 22m, 5, 2.0, "Bow and Arrow"),
+            ("Cavalry", 25, 35, 18, 40, "Male", 28m, 6, 2.5, "Chariot"), // Peak riders
+            ("Officer", 35, 30, 25, 60, "Male", 40m, 7, 1.5, "Tactics"), // Leadership, can be older
+            ("General", 45, 35, 30, 65, "Male", 80m, 10, 1.2, "Tactics"), // Experience valued
 
-            // GOVERNANCE
-            ("Administrator", 40, 10, 25, 45m, 7, 0.7, "Writing"),
-            ("Tax Collector", 35, 15, 22, 35m, 5, 1.0, "Mathematics"),
-            ("Diplomat", 45, 10, 30, 55m, 9, 0.8, "Writing"),
-            ("Spy", 40, 25, 22, 40m, 5, 2.0, null),
+            // GOVERNANCE (Knowledge-based, can work at any age)
+            ("Administrator", 40, 10, 25, null, "Any", 45m, 7, 0.7, "Writing"),
+            ("Tax Collector", 35, 15, 22, null, "Any", 35m, 5, 1.0, "Mathematics"),
+            ("Diplomat", 45, 10, 30, null, "Any", 55m, 9, 0.8, "Writing"),
+            ("Spy", 40, 25, 22, 50, "Any", 40m, 5, 2.0, null), // Needs physical fitness
 
-            // LEADERSHIP
-            ("Leader", 38, 25, 25, 100m, 10, 1.0, null),
-            ("King/Queen", 40, 25, 30, 200m, 10, 0.9, null),
+            // LEADERSHIP (Experience-based, older preferred)
+            ("Leader", 38, 25, 25, null, "Any", 100m, 10, 1.0, null),
+            ("King/Queen", 40, 25, 30, null, "Any", 200m, 10, 0.9, null),
         };
     }
 }

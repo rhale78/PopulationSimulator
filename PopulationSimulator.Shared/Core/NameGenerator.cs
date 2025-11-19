@@ -1,9 +1,11 @@
+using System.Linq;
+
 namespace PopulationSimulator.Core;
 
 public class NameGenerator
 {
     private readonly Random _random;
-    
+
     private static readonly string[] MaleFirstNames = 
     {
         // Biblical names
@@ -277,52 +279,144 @@ public class NameGenerator
     
     public string GenerateMaleFirstName()
     {
-        return MaleFirstNames[_random.Next(MaleFirstNames.Length)];
+        // Combine original and expanded names for variety
+        var allMaleNames = MaleFirstNames.Concat(ExpandedNames.AdditionalMaleNames).ToArray();
+        return allMaleNames[_random.Next(allMaleNames.Length)];
     }
-    
+
     public string GenerateFemaleFirstName()
     {
-        return FemaleFirstNames[_random.Next(FemaleFirstNames.Length)];
+        // Combine original and expanded names for variety
+        var allFemaleNames = FemaleFirstNames.Concat(ExpandedNames.AdditionalFemaleNames).ToArray();
+        return allFemaleNames[_random.Next(allFemaleNames.Length)];
     }
-    
-    public string GenerateLastName(string? fatherName, string? cityName, string? jobName, int generationNumber)
+
+    public string GenerateLastName(string? fatherName, string? motherName, string? fatherLastName, string? motherLastName,
+        string? cityName, string? jobName, int generationNumber, string gender)
     {
-        // Early generations: patronymic names (only if father name is known)
-        if (generationNumber < 10 && !string.IsNullOrEmpty(fatherName) && fatherName != "Unknown")
+        // If parents have hereditary surnames (not patronymic), inherit them
+        if (!string.IsNullOrEmpty(fatherLastName) && !fatherLastName.StartsWith("ben ") &&
+            !fatherLastName.StartsWith("bat ") && !fatherLastName.StartsWith("of ") &&
+            fatherLastName != "Unknown" && generationNumber >= 4)
         {
-            return $"ben {fatherName}"; // "son of"
+            return fatherLastName; // Children inherit father's hereditary surname
         }
-        
-        // Middle generations: city-based names
-        if (generationNumber < 50 && !string.IsNullOrEmpty(cityName))
+
+        if (!string.IsNullOrEmpty(motherLastName) && !motherLastName.StartsWith("ben ") &&
+            !motherLastName.StartsWith("bat ") && !motherLastName.StartsWith("of ") &&
+            motherLastName != "Unknown" && generationNumber >= 4 && string.IsNullOrEmpty(fatherLastName))
         {
-            return $"of {cityName}";
+            return motherLastName; // If no father surname, use mother's hereditary surname
         }
-        
-        // Later generations: occupation-based names
-        if (!string.IsNullOrEmpty(jobName))
+
+        // Generations 0-3: Pure patronymic/matronymic
+        if (generationNumber <= 3)
         {
-            return jobName;
+            if (!string.IsNullOrEmpty(fatherName) && fatherName != "Unknown")
+            {
+                return gender.ToLower() == "male" ? $"ben {fatherName}" : $"bat {fatherName}";
+            }
+            if (!string.IsNullOrEmpty(motherName) && motherName != "Unknown")
+            {
+                return gender.ToLower() == "male" ? $"ben {motherName}" : $"bat {motherName}";
+            }
+            return "Unknown";
         }
-        
-        // Fallback: patronymic (only if father name is known and not "Unknown")
+
+        // Generations 4-10: Transition to hereditary surnames
+        // 50% chance to adopt a hereditary surname instead of patronymic
+        if (generationNumber >= 4 && generationNumber <= 10 && _random.Next(100) < 50)
+        {
+            return GenerateHereditarySurname(jobName, cityName, fatherName, motherName);
+        }
+
+        // Generations 10+: Mostly hereditary surnames
+        if (generationNumber > 10)
+        {
+            // 90% chance of hereditary surname
+            if (_random.Next(100) < 90)
+            {
+                return GenerateHereditarySurname(jobName, cityName, fatherName, motherName);
+            }
+        }
+
+        // Fallback to patronymic/matronymic for transition period
         if (!string.IsNullOrEmpty(fatherName) && fatherName != "Unknown")
         {
-            return $"ben {fatherName}";
+            return gender.ToLower() == "male" ? $"ben {fatherName}" : $"bat {fatherName}";
         }
-        
-        // Last resort: use mother's last name or "Unknown"
+        if (!string.IsNullOrEmpty(motherName) && motherName != "Unknown")
+        {
+            return gender.ToLower() == "male" ? $"ben {motherName}" : $"bat {motherName}";
+        }
+
         return "Unknown";
+    }
+
+    private string GenerateHereditarySurname(string? jobName, string? cityName, string? fatherName, string? motherName)
+    {
+        // Multiple surname formation strategies
+        int strategy = _random.Next(5);
+
+        switch (strategy)
+        {
+            case 0: // Occupational surnames
+                if (!string.IsNullOrEmpty(jobName))
+                {
+                    // Use job name directly or with variations
+                    var occupationalSuffixes = new[] { "", "smith", "wright", "er", "man" };
+                    string suffix = occupationalSuffixes[_random.Next(occupationalSuffixes.Length)];
+                    return string.IsNullOrEmpty(suffix) ? jobName : jobName + suffix;
+                }
+                break;
+
+            case 1: // Locational surnames
+                if (!string.IsNullOrEmpty(cityName))
+                {
+                    var locationalPrefixes = new[] { "", "of ", "from " };
+                    string prefix = locationalPrefixes[_random.Next(locationalPrefixes.Length)];
+                    return string.IsNullOrEmpty(prefix) ? cityName : prefix + cityName;
+                }
+                break;
+
+            case 2: // Patronymic-derived hereditary surnames
+                if (!string.IsNullOrEmpty(fatherName) && fatherName != "Unknown")
+                {
+                    var patronymicSuffixes = new[] { "son", "sen", "ez", "ovich", "ian", "sson", "dottir" };
+                    return fatherName + patronymicSuffixes[_random.Next(patronymicSuffixes.Length)];
+                }
+                if (!string.IsNullOrEmpty(motherName) && motherName != "Unknown")
+                {
+                    var matronymicSuffixes = new[] { "son", "sen", "dottir" };
+                    return motherName + matronymicSuffixes[_random.Next(matronymicSuffixes.Length)];
+                }
+                break;
+
+            case 3: // Descriptive/Nature surnames from components
+                return ExpandedNames.SurnameComponents[_random.Next(ExpandedNames.SurnameComponents.Length)];
+
+            case 4: // Combined surname components
+                var component1 = ExpandedNames.SurnameComponents[_random.Next(ExpandedNames.SurnameComponents.Length)];
+                var component2 = ExpandedNames.SurnameComponents[_random.Next(ExpandedNames.SurnameComponents.Length)];
+                return component1 + component2;
+        }
+
+        // Fallback to surname components
+        return ExpandedNames.SurnameComponents[_random.Next(ExpandedNames.SurnameComponents.Length)];
     }
     
     public string GenerateCityName()
     {
-        return CityNames[_random.Next(CityNames.Length)];
+        // Combine original and expanded city names for variety
+        var allCityNames = CityNames.Concat(ExpandedNames.AdditionalCityNames).ToArray();
+        return allCityNames[_random.Next(allCityNames.Length)];
     }
-    
+
     public string GenerateCountryName()
     {
-        return CountryNames[_random.Next(CountryNames.Length)];
+        // Combine original and expanded country names for variety
+        var allCountryNames = CountryNames.Concat(ExpandedNames.AdditionalCountryNames).ToArray();
+        return allCountryNames[_random.Next(allCountryNames.Length)];
     }
     
     public string GenerateReligionName()

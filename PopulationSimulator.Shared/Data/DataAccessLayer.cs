@@ -126,6 +126,8 @@ public class DataAccessLayer
                 MinIntelligence INT NOT NULL,
                 MinStrength INT NOT NULL,
                 MinAge INT NOT NULL,
+                MaxAge INT NULL,
+                GenderRestriction NVARCHAR(10) NOT NULL DEFAULT 'Any',
                 BaseSalary DECIMAL(18,2) NOT NULL,
                 SocialStatusBonus INT NOT NULL,
                 DeathRiskModifier DECIMAL(10,2) NOT NULL,
@@ -181,6 +183,55 @@ public class DataAccessLayer
                 FoundedDate DATETIME2 NOT NULL,
                 CurrentRulerId BIGINT NULL,
                 MemberCount INT NOT NULL
+            );
+
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Businesses' AND xtype='U')
+            CREATE TABLE Businesses (
+                Id BIGINT IDENTITY(1,1) PRIMARY KEY,
+                Name NVARCHAR(200) NOT NULL,
+                Type NVARCHAR(100) NOT NULL,
+                OwnerId BIGINT NOT NULL,
+                CityId BIGINT NULL,
+                FoundedDate DATETIME2 NOT NULL,
+                ClosedDate DATETIME2 NULL,
+                IsActive BIT NOT NULL DEFAULT 1,
+                Wealth DECIMAL(18,2) NOT NULL DEFAULT 0,
+                EmployeeCount INT NOT NULL DEFAULT 0,
+                MaxEmployees INT NOT NULL DEFAULT 10,
+                GoodsProduced NVARCHAR(500) NOT NULL DEFAULT '',
+                AnnualRevenue DECIMAL(18,2) NOT NULL DEFAULT 0,
+                AnnualCosts DECIMAL(18,2) NOT NULL DEFAULT 0,
+                Reputation INT NOT NULL DEFAULT 50,
+                CanInnovate BIT NOT NULL DEFAULT 0,
+                InnovationPoints INT NOT NULL DEFAULT 0,
+                Status NVARCHAR(50) NOT NULL DEFAULT 'Growing',
+                YearsInBusiness INT NOT NULL DEFAULT 0,
+                PeakWealth DECIMAL(18,2) NOT NULL DEFAULT 0
+            );
+
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='BusinessEmployees' AND xtype='U')
+            CREATE TABLE BusinessEmployees (
+                Id BIGINT IDENTITY(1,1) PRIMARY KEY,
+                BusinessId BIGINT NOT NULL,
+                PersonId BIGINT NOT NULL,
+                HireDate DATETIME2 NOT NULL,
+                Salary DECIMAL(18,2) NOT NULL DEFAULT 0,
+                Role NVARCHAR(100) NOT NULL DEFAULT 'Worker'
+            );
+
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='NaturalDisasters' AND xtype='U')
+            CREATE TABLE NaturalDisasters (
+                Id BIGINT IDENTITY(1,1) PRIMARY KEY,
+                Type NVARCHAR(100) NOT NULL,
+                OccurredDate DATETIME2 NOT NULL,
+                CityId BIGINT NULL,
+                CountryId BIGINT NULL,
+                Severity INT NOT NULL,
+                Deaths INT NOT NULL DEFAULT 0,
+                EconomicDamage DECIMAL(18,2) NOT NULL DEFAULT 0,
+                BuildingsDestroyed INT NOT NULL DEFAULT 0,
+                PeopleDisplaced INT NOT NULL DEFAULT 0,
+                Description NVARCHAR(1000) NOT NULL DEFAULT ''
             );
 
             IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Laws' AND xtype='U')
@@ -535,14 +586,16 @@ public class DataAccessLayer
             {
                 var cmd = connection.CreateCommand();
                 cmd.CommandText = @"
-                    INSERT INTO Jobs (Name, MinIntelligence, MinStrength, MinAge, BaseSalary, SocialStatusBonus, DeathRiskModifier, RequiresInvention, RequiredInventionId)
-                    VALUES (@Name, @MinIntelligence, @MinStrength, @MinAge, @BaseSalary, @SocialStatusBonus, @DeathRiskModifier, @RequiresInvention, @RequiredInventionId);
+                    INSERT INTO Jobs (Name, MinIntelligence, MinStrength, MinAge, MaxAge, GenderRestriction, BaseSalary, SocialStatusBonus, DeathRiskModifier, RequiresInvention, RequiredInventionId)
+                    VALUES (@Name, @MinIntelligence, @MinStrength, @MinAge, @MaxAge, @GenderRestriction, @BaseSalary, @SocialStatusBonus, @DeathRiskModifier, @RequiresInvention, @RequiredInventionId);
                     SELECT CAST(SCOPE_IDENTITY() AS BIGINT);";
 
                 cmd.Parameters.AddWithValue("@Name", job.Name);
                 cmd.Parameters.AddWithValue("@MinIntelligence", job.MinIntelligence);
                 cmd.Parameters.AddWithValue("@MinStrength", job.MinStrength);
                 cmd.Parameters.AddWithValue("@MinAge", job.MinAge);
+                cmd.Parameters.AddWithValue("@MaxAge", (object?)job.MaxAge ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@GenderRestriction", job.GenderRestriction);
                 cmd.Parameters.AddWithValue("@BaseSalary", job.BaseSalary);
                 cmd.Parameters.AddWithValue("@SocialStatusBonus", job.SocialStatusBonus);
                 cmd.Parameters.AddWithValue("@DeathRiskModifier", job.DeathRiskModifier);

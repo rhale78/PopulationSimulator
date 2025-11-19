@@ -31,6 +31,10 @@ public class Simulator
     private readonly Dictionary<long, Dynasty> _dynastiesById = new();
     private readonly List<TradeRoute> _tradeRoutes = new();
     private readonly Dictionary<long, TradeRoute> _tradeRoutesById = new();
+    private readonly List<Business> _businesses = new();
+    private readonly Dictionary<long, Business> _businessesById = new();
+    private readonly List<BusinessEmployee> _businessEmployees = new();
+    private readonly List<NaturalDisaster> _disasters = new();
     private readonly List<Event> _recentEvents = new();
     
     private DateTime _currentDate;
@@ -138,10 +142,10 @@ public class Simulator
     
     private void SeedJobs()
     {
-        // ENHANCED: Use ExpandedContent for 75+ jobs
+        // ENHANCED: Use ExpandedContent for 75+ jobs with gender/age restrictions
         var jobsData = ExpandedContent.GetAllJobs();
 
-        foreach (var (name, intel, str, age, salary, status, risk, requiredInvention) in jobsData)
+        foreach (var (name, intel, str, minAge, maxAge, gender, salary, status, risk, requiredInvention) in jobsData)
         {
             var job = new Job
             {
@@ -149,7 +153,9 @@ public class Simulator
                 Name = name,
                 MinIntelligence = intel,
                 MinStrength = str,
-                MinAge = age,
+                MinAge = minAge,
+                MaxAge = maxAge,
+                GenderRestriction = gender,
                 BaseSalary = salary,
                 SocialStatusBonus = status,
                 DeathRiskModifier = risk,
@@ -590,12 +596,20 @@ public class Simulator
             // Find the best job match for this person
             foreach (var job in _jobs)
             {
-                // Check age requirement
-                if (person.GetAge(_currentDate) < job.MinAge) continue;
-                
+                // Check age requirements (min and max)
+                int personAge = person.GetAge(_currentDate);
+                if (personAge < job.MinAge) continue;
+                if (job.MaxAge.HasValue && personAge > job.MaxAge.Value) continue;
+
+                // Check gender restriction
+                if (job.GenderRestriction != "Any")
+                {
+                    if (job.GenderRestriction != person.Gender) continue;
+                }
+
                 // Check intelligence requirement
                 if (person.Intelligence < job.MinIntelligence) continue;
-                
+
                 // Check strength requirement
                 if (person.Strength < job.MinStrength) continue;
                 
@@ -869,20 +883,25 @@ public class Simulator
                 
                 // Update global generation counter
                 _generationNumber = Math.Max(_generationNumber, childGeneration);
-                
-                // Use father's name for patronymic, or mother's last name as fallback
+
+                // Gather parent information for surname generation
                 string fatherName = father?.FirstName ?? string.Empty;
+                string motherName = mother.FirstName;
+                string? fatherLastName = father?.LastName;
+                string? motherLastName = mother.LastName;
                 long? fatherId = father?.Id;
-                string cityName = mother.CityId.HasValue && _citiesById.ContainsKey(mother.CityId.Value) 
-                    ? _citiesById[mother.CityId.Value].Name 
+                string cityName = mother.CityId.HasValue && _citiesById.ContainsKey(mother.CityId.Value)
+                    ? _citiesById[mother.CityId.Value].Name
                     : string.Empty;
-                string jobName = father?.JobId.HasValue == true && _jobsById.ContainsKey(father.JobId.Value) 
-                    ? _jobsById[father.JobId.Value].Name 
+                string jobName = father?.JobId.HasValue == true && _jobsById.ContainsKey(father.JobId.Value)
+                    ? _jobsById[father.JobId.Value].Name
                     : string.Empty;
-                
-                // Use global generation number for naming convention, not child's individual generation
-                string lastName = _nameGenerator.GenerateLastName(fatherName, cityName, jobName, _generationNumber);
-                
+
+                // Use enhanced surname generation with proper evolution
+                string lastName = _nameGenerator.GenerateLastName(
+                    fatherName, motherName, fatherLastName, motherLastName,
+                    cityName, jobName, childGeneration, gender);
+
                 // If lastName is "Unknown", use mother's last name instead
                 if (lastName == "Unknown" && !string.IsNullOrEmpty(mother.LastName))
                 {
@@ -956,7 +975,22 @@ public class Simulator
         {
             DiscoverInvention();
         }
-        
+
+        // Create new businesses
+        if (population > 30 && _businesses.Count < population / 20 && _random.NextDouble() < 0.25)
+        {
+            CreateBusiness();
+        }
+
+        // Process existing businesses (rise/fall, innovation)
+        ProcessBusinesses();
+
+        // Natural disasters
+        if (population > 100 && _random.NextDouble() < 0.08)
+        {
+            TriggerNaturalDisaster();
+        }
+
         // Wars
         if (_countries.Count > 1 && _random.NextDouble() < 0.05)
         {
@@ -1160,7 +1194,226 @@ public class Simulator
         
         LogEvent("War", $"War broke out: {war.Name}", countryId: attacker.Id);
     }
-    
+
+    private void CreateBusiness()
+    {
+        // Find a suitable business owner (high intelligence/charisma, has a job or wealth)
+        var owner = _people.Where(p => p.IsAlive && p.GetAge(_currentDate) >= 20 &&
+                                       p.Intelligence >= 30 && p.Charisma >= 25)
+            .OrderByDescending(p => p.Intelligence + p.Charisma + p.Wisdom)
+            .FirstOrDefault();
+
+        if (owner == null) return;
+
+        // Determine business type based on available inventions and city
+        string[] businessTypes = { "Farm", "Workshop", "Merchant House", "Smithy", "Tavern", "Inn", "Market Stall" };
+        string businessType = businessTypes[_random.Next(businessTypes.Length)];
+
+        var business = new Business
+        {
+            Id = _nextTempId--,
+            Name = $"{owner.FirstName}'s {businessType}",
+            Type = businessType,
+            OwnerId = owner.Id,
+            CityId = owner.CityId,
+            FoundedDate = _currentDate,
+            IsActive = true,
+            Wealth = _random.Next(100, 1000),
+            MaxEmployees = _random.Next(3, 15),
+            EmployeeCount = 0,
+            Reputation = _random.Next(40, 70),
+            Status = "Growing",
+            CanInnovate = owner.Intelligence >= 50 && owner.Creativity >= 40,
+            InnovationPoints = 0,
+            YearsInBusiness = 0
+        };
+
+        _businesses.Add(business);
+        _businessesById[business.Id] = business;
+
+        LogEvent("Business", $"{business.Name} was founded by {owner.FirstName} {owner.LastName}", owner.Id);
+    }
+
+    private void ProcessBusinesses()
+    {
+        foreach (var business in _businesses.Where(b => b.IsActive).ToList())
+        {
+            business.YearsInBusiness++;
+
+            // Calculate revenue and costs
+            business.AnnualRevenue = business.Reputation * business.EmployeeCount * _random.Next(50, 200);
+            business.AnnualCosts = business.EmployeeCount * _random.Next(100, 300);
+            decimal profit = business.AnnualRevenue - business.AnnualCosts;
+
+            business.Wealth += profit;
+            if (business.Wealth > business.PeakWealth)
+                business.PeakWealth = business.Wealth;
+
+            // Update status based on performance
+            if (profit > business.AnnualRevenue * 0.3m)
+            {
+                business.Status = "Growing";
+                business.Reputation = Math.Min(100, business.Reputation + _random.Next(1, 5));
+            }
+            else if (profit > 0)
+            {
+                business.Status = "Stable";
+            }
+            else if (profit > -business.AnnualRevenue * 0.2m)
+            {
+                business.Status = "Declining";
+                business.Reputation = Math.Max(0, business.Reputation - _random.Next(1, 3));
+            }
+            else
+            {
+                business.Status = "Failing";
+                business.Reputation = Math.Max(0, business.Reputation - _random.Next(3, 10));
+            }
+
+            // Business innovation (can discover inventions)
+            if (business.CanInnovate && business.Status == "Growing")
+            {
+                business.InnovationPoints += _random.Next(1, 5);
+                if (business.InnovationPoints >= 50 && _random.NextDouble() < 0.15)
+                {
+                    // Business discovers an invention
+                    var owner = _peopleById.ContainsKey(business.OwnerId) ? _peopleById[business.OwnerId] : null;
+                    if (owner != null)
+                    {
+                        DiscoverInventionBy(owner, $"{business.Name}");
+                        business.InnovationPoints = 0;
+                        business.Reputation += 10;
+                    }
+                }
+            }
+
+            // Business may close if failing for too long
+            if (business.Status == "Failing" && business.Wealth < -1000)
+            {
+                business.IsActive = false;
+                business.ClosedDate = _currentDate;
+                LogEvent("Business", $"{business.Name} has closed due to financial troubles", business.OwnerId);
+            }
+        }
+    }
+
+    private void DiscoverInventionBy(Person inventor, string context)
+    {
+        // Similar to DiscoverInvention() but attributes it to a specific person/business
+        var allInventions = ExpandedContent.GetAllInventions();
+        var undiscovered = allInventions.Where(inv => !_inventions.Any(i => i.Name == inv.name)).ToList();
+
+        if (!undiscovered.Any()) return;
+
+        var possibleInventions = undiscovered.Where(inv => inventor.Intelligence >= inv.reqIntel).ToList();
+        if (!possibleInventions.Any())
+            possibleInventions = undiscovered;
+
+        var inventionData = possibleInventions[_random.Next(possibleInventions.Count)];
+
+        var invention = new Invention
+        {
+            Id = _nextTempId--,
+            Name = inventionData.name,
+            DiscoveryDate = _currentDate,
+            InventorId = inventor.Id,
+            Category = inventionData.category,
+            HealthBonus = inventionData.healthBonus,
+            LifespanBonus = inventionData.lifespanBonus
+        };
+
+        _inventions.Add(invention);
+        _inventionsById[invention.Id] = invention;
+
+        LogEvent("Invention", $"{inventor.FirstName} {inventor.LastName} ({context}) discovered {invention.Name}", inventor.Id);
+    }
+
+    private void TriggerNaturalDisaster()
+    {
+        // Select disaster type
+        string[] disasterTypes = { "Earthquake", "Flood", "Plague", "Famine", "Drought",
+            "Hurricane", "Volcano", "Wildfire", "Tsunami", "Blizzard", "Tornado", "Landslide" };
+        string disasterType = disasterTypes[_random.Next(disasterTypes.Length)];
+
+        // Select affected location (city or country)
+        City? affectedCity = null;
+        Country? affectedCountry = null;
+
+        if (_cities.Any() && _random.NextDouble() < 0.7)
+        {
+            affectedCity = _cities[_random.Next(_cities.Count)];
+            affectedCountry = affectedCity.CountryId.HasValue && _countriesById.ContainsKey(affectedCity.CountryId.Value)
+                ? _countriesById[affectedCity.CountryId.Value]
+                : null;
+        }
+        else if (_countries.Any())
+        {
+            affectedCountry = _countries[_random.Next(_countries.Count)];
+        }
+
+        int severity = _random.Next(1, 11); // 1-10 severity scale
+        int deaths = 0;
+        int peopleDisplaced = 0;
+        int buildingsDestroyed = 0;
+        decimal economicDamage = 0;
+
+        // Calculate impact based on disaster type and severity
+        var affectedPeople = _people.Where(p => p.IsAlive &&
+            (affectedCity != null && p.CityId == affectedCity.Id ||
+             affectedCountry != null && p.CountryId == affectedCountry.Id)).ToList();
+
+        foreach (var person in affectedPeople.Take(severity * 5))
+        {
+            // Disease resistance helps with plague
+            double survivalChance = disasterType == "Plague"
+                ? person.DiseaseResistance / 100.0
+                : 1.0 - (severity / 20.0);
+
+            if (_random.NextDouble() > survivalChance)
+            {
+                person.IsAlive = false;
+                person.DeathDate = _currentDate;
+                person.CauseOfDeath = disasterType;
+                deaths++;
+                MoveToDead(person);
+            }
+            else if (_random.NextDouble() < 0.3)
+            {
+                peopleDisplaced++;
+                person.CityId = null; // Displaced from city
+            }
+        }
+
+        buildingsDestroyed = severity * _random.Next(5, 20);
+        economicDamage = severity * _random.Next(1000, 10000);
+
+        // Reduce city/country wealth
+        if (affectedCity != null)
+            affectedCity.Wealth = Math.Max(0, affectedCity.Wealth - economicDamage);
+        if (affectedCountry != null)
+            affectedCountry.Wealth = Math.Max(0, affectedCountry.Wealth - economicDamage);
+
+        var disaster = new NaturalDisaster
+        {
+            Id = _nextTempId--,
+            Type = disasterType,
+            OccurredDate = _currentDate,
+            CityId = affectedCity?.Id,
+            CountryId = affectedCountry?.Id,
+            Severity = severity,
+            Deaths = deaths,
+            EconomicDamage = economicDamage,
+            BuildingsDestroyed = buildingsDestroyed,
+            PeopleDisplaced = peopleDisplaced,
+            Description = $"{disasterType} struck {affectedCity?.Name ?? affectedCountry?.Name ?? "an unknown location"} with severity {severity}/10"
+        };
+
+        _disasters.Add(disaster);
+
+        string location = affectedCity?.Name ?? affectedCountry?.Name ?? "the region";
+        LogEvent("Disaster", $"{disasterType} struck {location} - {deaths} dead, {peopleDisplaced} displaced", cityId: affectedCity?.Id, countryId: affectedCountry?.Id);
+    }
+
     private void SyncToDatabase()
     {
         _dataAccess.SavePeople(_people);
