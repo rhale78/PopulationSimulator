@@ -69,6 +69,12 @@
                         <button class="btn btn-sm btn-outline-secondary" @onclick="ExportBusinesses">
                             🏪 Export Businesses (CSV)
                         </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportSchools">
+                            🎓 Export Schools (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportUniversities">
+                            🏛️ Export Universities (CSV)
+                        </button>
                         <button class="btn btn-sm btn-outline-secondary" @onclick="ExportEvents">
                             📰 Export Events (CSV)
                         </button>
@@ -379,6 +385,18 @@
                             <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of wars fought between countries">
                                 <td><strong>Wars:</strong></td>
                                 <td class="text-end">@_stats.TotalWars</td>
+                            </tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of schools founded to educate children">
+                                <td><strong>Schools:</strong></td>
+                                <td class="text-end">@_stats.TotalSchools (@_stats.TotalStudents students)</td>
+                            </tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of universities founded for advanced education">
+                                <td><strong>Universities:</strong></td>
+                                <td class="text-end">@_stats.TotalUniversities (@_stats.TotalUniversityStudents students)</td>
+                            </tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Percentage of population that can read and write">
+                                <td><strong>Literacy Rate:</strong></td>
+                                <td class="text-end">@_stats.LiteracyRate.ToString("F1")% (@_stats.LiteratePopulation people)</td>
                             </tr>
                         </tbody>
                     </table>
@@ -787,6 +805,18 @@
     {
         var csv = SimulatorService.ExportEventsAsCSV();
         await DownloadFile($"events_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportSchools()
+    {
+        var csv = SimulatorService.ExportSchoolsAsCSV();
+        await DownloadFile($"schools_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportUniversities()
+    {
+        var csv = SimulatorService.ExportUniversitiesAsCSV();
+        await DownloadFile($"universities_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
     }
 
     private async Task ExportAllJSON()

@@ -167,6 +167,16 @@ public class SimulatorService
         return _simulator.ExportEventsAsCSV();
     }
 
+    public string ExportSchoolsAsCSV()
+    {
+        return _simulator.ExportSchoolsAsCSV();
+    }
+
+    public string ExportUniversitiesAsCSV()
+    {
+        return _simulator.ExportUniversitiesAsCSV();
+    }
+
     public string ExportAllAsJSON()
     {
         return _simulator.ExportAllAsJSON();
@@ -180,10 +190,14 @@ public class SimulatorService
     public List<City> GetAllCities() => _simulator.GetAllCities();
     public List<Country> GetAllCountries() => _simulator.GetAllCountries();
     public List<Invention> GetAllInventions() => _simulator.GetAllInventions();
+    public List<School> GetAllSchools() => _simulator.GetAllSchools();
+    public List<University> GetAllUniversities() => _simulator.GetAllUniversities();
     public Dictionary<long, Person> GetPeopleById() => _simulator.GetPeopleById();
     public Dictionary<long, Person> GetDeadPeopleById() => _simulator.GetDeadPeopleById();
     public Dictionary<long, City> GetCitiesById() => _simulator.GetCitiesById();
     public Dictionary<long, Country> GetCountriesById() => _simulator.GetCountriesById();
+    public Dictionary<long, School> GetSchoolsById() => _simulator.GetSchoolsById();
+    public Dictionary<long, University> GetUniversitiesById() => _simulator.GetUniversitiesById();
     public DateTime GetCurrentDate() => _simulator.GetCurrentDate();
 
     // ============================================================================

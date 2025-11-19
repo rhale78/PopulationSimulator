@@ -36,6 +36,10 @@ public class Simulator
     private readonly List<BusinessEmployee> _businessEmployees = new();
     private readonly List<NaturalDisaster> _disasters = new();
     private readonly List<Event> _recentEvents = new();
+    private readonly List<School> _schools = new();
+    private readonly Dictionary<long, School> _schoolsById = new();
+    private readonly List<University> _universities = new();
+    private readonly Dictionary<long, University> _universitiesById = new();
     
     private DateTime _currentDate;
     private long _nextTempId = -1;
@@ -373,8 +377,9 @@ public class Simulator
     public void SimulateDay()
     {
         _syncCounter++;
-        
+
         ProcessDeaths();
+        ProcessEducation(); // Education before jobs
         AssignJobs();
         ProcessMarriages();
         ProcessPregnancies();
@@ -987,6 +992,18 @@ public class Simulator
         // Process existing businesses (rise/fall, innovation)
         ProcessBusinesses();
 
+        // Found schools
+        if (population > 100 && _cities.Count > 0 && _schools.Count < _cities.Count * 3 && _random.NextDouble() < 0.20)
+        {
+            FoundSchool();
+        }
+
+        // Found universities
+        if (population > 1000 && _cities.Count > 2 && _schools.Count > 5 && _universities.Count < _cities.Count && _random.NextDouble() < 0.10)
+        {
+            FoundUniversity();
+        }
+
         // Natural disasters (now geography-aware with individual probabilities)
         // Increased frequency since each disaster has its own probability check
         if (population > 100 && _cities.Count > 0 && _random.NextDouble() < 0.40)
@@ -1339,6 +1356,308 @@ public class Simulator
         LogEvent("Invention", $"{inventor.FirstName} {inventor.LastName} ({context}) discovered {invention.Name}", inventor.Id);
     }
 
+    // ============================================================================
+    // EDUCATION SYSTEM
+    // ============================================================================
+
+    private void ProcessEducation()
+    {
+        // Process schools
+        foreach (var school in _schools.ToList())
+        {
+            school.CurrentStudents = 0; // Reset daily count
+        }
+
+        // Process universities
+        foreach (var university in _universities.ToList())
+        {
+            university.CurrentStudents = 0; // Reset daily count
+        }
+
+        // Assign people to schools and universities
+        foreach (var person in _people.Where(p => p.IsAlive).ToList())
+        {
+            int age = person.GetAge(_currentDate);
+
+            // Children attend school (ages 6-18)
+            if (person.IsEligibleForSchool(_currentDate) && _schools.Any())
+            {
+                AssignToSchool(person);
+            }
+            // Graduated from school, update education level
+            else if (person.SchoolId.HasValue && age > 18)
+            {
+                GraduateFromSchool(person);
+            }
+
+            // Young adults attend university (ages 18-30, requires secondary education)
+            if (person.IsEligibleForUniversity(_currentDate) && _universities.Any())
+            {
+                AssignToUniversity(person);
+            }
+            // Graduated from university, update education level
+            else if (person.UniversityId.HasValue && age > 25)
+            {
+                GraduateFromUniversity(person);
+            }
+
+            // Knowledge transfer from parents to children (education boost)
+            if (age < 18 && (person.FatherId.HasValue || person.MotherId.HasValue))
+            {
+                TransferKnowledgeFromParents(person);
+            }
+        }
+    }
+
+    private void AssignToSchool(Person person)
+    {
+        // Find a school in the person's city or nearby
+        var eligibleSchools = _schools.Where(s =>
+            s.CityId == person.CityId &&
+            s.CurrentStudents < s.Capacity
+        ).ToList();
+
+        if (!eligibleSchools.Any()) return;
+
+        var school = eligibleSchools[_random.Next(eligibleSchools.Count)];
+        person.SchoolId = school.Id;
+        school.CurrentStudents++;
+
+        // Improve literacy and intelligence based on school quality
+        if (!person.IsLiterate && _random.Next(100) < school.QualityRating)
+        {
+            person.IsLiterate = true;
+            person.Intelligence = Math.Min(100, person.Intelligence + _random.Next(5, 15));
+        }
+
+        // Progress education level
+        int age = person.GetAge(_currentDate);
+        if (age >= 6 && age < 12 && person.EducationLevel == "None")
+        {
+            person.EducationLevel = "Primary";
+            person.EducationQuality = school.QualityRating;
+        }
+        else if (age >= 12 && age <= 18 && person.EducationLevel == "Primary")
+        {
+            person.EducationLevel = "Secondary";
+            person.EducationQuality = (person.EducationQuality + school.QualityRating) / 2; // Average quality
+        }
+    }
+
+    private void GraduateFromSchool(Person person)
+    {
+        if (!person.SchoolId.HasValue) return;
+
+        var school = _schoolsById.ContainsKey(person.SchoolId.Value) ? _schoolsById[person.SchoolId.Value] : null;
+
+        person.GraduationDate = _currentDate;
+        person.SchoolId = null;
+
+        // Log notable graduations (10% chance)
+        if (_random.Next(100) < 10 && school != null)
+        {
+            LogEvent("Education", $"{person.FirstName} {person.LastName} graduated from {school.Name}", person.Id);
+        }
+    }
+
+    private void AssignToUniversity(Person person)
+    {
+        // Find a university in the person's city or nearby
+        var eligibleUniversities = _universities.Where(u =>
+            u.CityId == person.CityId &&
+            u.CurrentStudents < u.Capacity
+        ).ToList();
+
+        if (!eligibleUniversities.Any()) return;
+
+        var university = eligibleUniversities[_random.Next(eligibleUniversities.Count)];
+        person.UniversityId = university.Id;
+        university.CurrentStudents++;
+
+        // Major intelligence boost from university
+        person.Intelligence = Math.Min(100, person.Intelligence + _random.Next(10, 25));
+        person.Creativity = Math.Min(100, person.Creativity + _random.Next(5, 15));
+        person.Wisdom = Math.Min(100, person.Wisdom + _random.Next(5, 15));
+
+        person.EducationLevel = "University";
+        person.EducationQuality = university.PrestigeRating;
+
+        // University research output contributes to inventions
+        university.ResearchOutput += _random.Next(1, 5);
+        if (university.ResearchOutput >= 100 && _random.NextDouble() < 0.20)
+        {
+            DiscoverInventionBy(person, $"{university.Name}");
+            university.ResearchOutput = 0;
+            university.PrestigeRating = Math.Min(100, university.PrestigeRating + 5);
+        }
+    }
+
+    private void GraduateFromUniversity(Person person)
+    {
+        if (!person.UniversityId.HasValue) return;
+
+        var university = _universitiesById.ContainsKey(person.UniversityId.Value) ? _universitiesById[person.UniversityId.Value] : null;
+
+        person.GraduationDate = _currentDate;
+        person.UniversityId = null;
+
+        // Make person notable if they graduated from a prestigious university
+        if (university != null && university.PrestigeRating >= 80 && !person.IsNotable)
+        {
+            person.IsNotable = true;
+            person.NotableFor = $"Graduate of {university.Name}";
+            LogEvent("Education", $"{person.FirstName} {person.LastName} graduated from the prestigious {university.Name}", person.Id);
+        }
+    }
+
+    private void TransferKnowledgeFromParents(Person child)
+    {
+        // Educated parents boost children's intelligence
+        var father = child.FatherId.HasValue && _peopleById.ContainsKey(child.FatherId.Value) ? _peopleById[child.FatherId.Value] : null;
+        var mother = child.MotherId.HasValue && _peopleById.ContainsKey(child.MotherId.Value) ? _peopleById[child.MotherId.Value] : null;
+
+        int intelligenceBoost = 0;
+
+        if (father != null && father.IsLiterate)
+        {
+            intelligenceBoost += _random.Next(0, 2);
+            if (father.EducationLevel == "University")
+                intelligenceBoost += _random.Next(1, 3);
+        }
+
+        if (mother != null && mother.IsLiterate)
+        {
+            intelligenceBoost += _random.Next(0, 2);
+            if (mother.EducationLevel == "University")
+                intelligenceBoost += _random.Next(1, 3);
+        }
+
+        if (intelligenceBoost > 0)
+        {
+            // Apply boost once per year on child's birthday
+            if (child.BirthDate.Month == _currentDate.Month && child.BirthDate.Day == _currentDate.Day)
+            {
+                child.Intelligence = Math.Min(100, child.Intelligence + intelligenceBoost);
+            }
+        }
+    }
+
+    private void FoundSchool()
+    {
+        if (_cities.Count == 0) return;
+
+        // Select a city for the school (prefer larger cities)
+        var city = _cities.OrderByDescending(c => c.Population).Take(3).ToList()[_random.Next(Math.Min(3, _cities.Count))];
+
+        // Find a suitable founder (educated, intelligent person)
+        var potentialFounders = _people.Where(p =>
+            p.IsAlive &&
+            p.CityId == city.Id &&
+            p.IsLiterate &&
+            p.Intelligence >= 70
+        ).ToList();
+
+        long? founderId = null;
+        if (potentialFounders.Any())
+        {
+            var founder = potentialFounders[_random.Next(potentialFounders.Count)];
+            founderId = founder.Id;
+        }
+
+        var schoolTypes = new[] { "Primary", "Secondary" };
+        var schoolType = schoolTypes[_random.Next(schoolTypes.Length)];
+
+        var school = new School
+        {
+            Id = _nextTempId--,
+            Name = GenerateSchoolName(city),
+            CityId = city.Id,
+            FoundedDate = _currentDate,
+            FounderId = founderId,
+            Capacity = _random.Next(50, 200),
+            QualityRating = _random.Next(40, 90),
+            Type = schoolType,
+            Funding = _random.Next(1000, 5000),
+            TeacherCount = _random.Next(3, 15)
+        };
+
+        _schools.Add(school);
+        _schoolsById[school.Id] = school;
+
+        LogEvent("Education", $"{school.Name} founded in {city.Name}", founderId);
+    }
+
+    private void FoundUniversity()
+    {
+        if (_cities.Count == 0) return;
+
+        // Universities only in large, prosperous cities
+        var eligibleCities = _cities.Where(c => c.Population > 500 && c.Wealth > 5000).ToList();
+        if (!eligibleCities.Any())
+            eligibleCities = _cities.OrderByDescending(c => c.Population).Take(3).ToList();
+
+        var city = eligibleCities[_random.Next(eligibleCities.Count)];
+
+        // Find a suitable founder (highly educated, very intelligent person)
+        var potentialFounders = _people.Where(p =>
+            p.IsAlive &&
+            p.CityId == city.Id &&
+            p.EducationLevel == "Secondary" &&
+            p.Intelligence >= 85
+        ).ToList();
+
+        long? founderId = null;
+        if (potentialFounders.Any())
+        {
+            var founder = potentialFounders[_random.Next(potentialFounders.Count)];
+            founderId = founder.Id;
+        }
+
+        var fields = new[] { "General", "Science", "Arts", "Medicine", "Engineering", "Philosophy" };
+        var field = fields[_random.Next(fields.Length)];
+
+        var university = new University
+        {
+            Id = _nextTempId--,
+            Name = GenerateUniversityName(city),
+            CityId = city.Id,
+            FoundedDate = _currentDate,
+            FounderId = founderId,
+            Capacity = _random.Next(100, 500),
+            PrestigeRating = _random.Next(50, 85),
+            Funding = _random.Next(10000, 50000),
+            ProfessorCount = _random.Next(10, 50),
+            PrimaryField = field,
+            ResearchOutput = 0
+        };
+
+        _universities.Add(university);
+        _universitiesById[university.Id] = university;
+
+        LogEvent("Education", $"{university.Name} founded in {city.Name} specializing in {field}", founderId);
+    }
+
+    private string GenerateSchoolName(City city)
+    {
+        var prefixes = new[] { "St.", "Royal", "Central", "New", "Old", "Grand" };
+        var suffixes = new[] { "Academy", "School", "Institute", "College", "Hall" };
+
+        if (_random.Next(100) < 50)
+            return $"{city.Name} {suffixes[_random.Next(suffixes.Length)]}";
+        else
+            return $"{prefixes[_random.Next(prefixes.Length)]} {city.Name} {suffixes[_random.Next(suffixes.Length)]}";
+    }
+
+    private string GenerateUniversityName(City city)
+    {
+        var prefixes = new[] { "Royal", "Imperial", "Grand", "Ancient" };
+
+        if (_random.Next(100) < 60)
+            return $"University of {city.Name}";
+        else
+            return $"{prefixes[_random.Next(prefixes.Length)]} {city.Name} University";
+    }
+
     private void TriggerNaturalDisaster()
     {
         if (_cities.Count == 0) return;
@@ -1580,6 +1899,12 @@ public class Simulator
         var maleCount = livingPeople.Count(p => p.Gender == "Male");
         var femaleCount = livingPeople.Count(p => p.Gender == "Female");
         
+        // Calculate education statistics
+        var literateCount = livingPeople.Count(p => p.IsLiterate);
+        var literacyRate = livingPeople.Count > 0 ? (double)literateCount / livingPeople.Count * 100 : 0;
+        var totalStudents = _schools.Sum(s => s.CurrentStudents);
+        var totalUniversityStudents = _universities.Sum(u => u.CurrentStudents);
+
         return new SimulationStats
         {
             CurrentDate = _currentDate,
@@ -1600,7 +1925,21 @@ public class Simulator
             FemaleCount = femaleCount,
             RecentEvents = _recentEvents.TakeLast(10).ToList(),
             TopJobs = GetTopJobs(),
-            FamilyTrees = GetActiveFamilyTrees()
+            FamilyTrees = GetActiveFamilyTrees(),
+
+            // Education statistics
+            TotalSchools = _schools.Count,
+            TotalUniversities = _universities.Count,
+            TotalStudents = totalStudents,
+            TotalUniversityStudents = totalUniversityStudents,
+            LiteratePopulation = literateCount,
+            LiteracyRate = literacyRate,
+            Schools = GetSchoolSummaries(),
+            Universities = GetUniversitySummaries(),
+
+            // Businesses and disasters
+            TotalBusinesses = _businesses.Count,
+            TotalDisasters = _disasters.Count
         };
     }
     
@@ -1628,7 +1967,57 @@ public class Simulator
             .Take(10)
             .ToList();
     }
-    
+
+    private List<SchoolSummary> GetSchoolSummaries()
+    {
+        return _schools.Select(s =>
+        {
+            var city = _citiesById.ContainsKey(s.CityId) ? _citiesById[s.CityId].Name : "Unknown";
+            var founder = s.FounderId.HasValue && _peopleById.ContainsKey(s.FounderId.Value)
+                ? $"{_peopleById[s.FounderId.Value].FirstName} {_peopleById[s.FounderId.Value].LastName}"
+                : (s.FounderId.HasValue && _deadPeopleById.ContainsKey(s.FounderId.Value)
+                    ? $"{_deadPeopleById[s.FounderId.Value].FirstName} {_deadPeopleById[s.FounderId.Value].LastName}"
+                    : "Unknown");
+
+            return new SchoolSummary
+            {
+                Name = s.Name,
+                Type = s.Type,
+                City = city,
+                Founder = founder,
+                CurrentStudents = s.CurrentStudents,
+                Capacity = s.Capacity,
+                QualityRating = s.QualityRating,
+                YearsOpen = (_currentDate - s.FoundedDate).Days / 365
+            };
+        }).ToList();
+    }
+
+    private List<UniversitySummary> GetUniversitySummaries()
+    {
+        return _universities.Select(u =>
+        {
+            var city = _citiesById.ContainsKey(u.CityId) ? _citiesById[u.CityId].Name : "Unknown";
+            var founder = u.FounderId.HasValue && _peopleById.ContainsKey(u.FounderId.Value)
+                ? $"{_peopleById[u.FounderId.Value].FirstName} {_peopleById[u.FounderId.Value].LastName}"
+                : (u.FounderId.HasValue && _deadPeopleById.ContainsKey(u.FounderId.Value)
+                    ? $"{_deadPeopleById[u.FounderId.Value].FirstName} {_deadPeopleById[u.FounderId.Value].LastName}"
+                    : "Unknown");
+
+            return new UniversitySummary
+            {
+                Name = u.Name,
+                City = city,
+                PrimaryField = u.PrimaryField,
+                Founder = founder,
+                CurrentStudents = u.CurrentStudents,
+                Capacity = u.Capacity,
+                PrestigeRating = u.PrestigeRating,
+                YearsOpen = (_currentDate - u.FoundedDate).Days / 365
+            };
+        }).ToList();
+    }
+
     private List<FamilyTreeNode> GetActiveFamilyTrees()
     {
         var trees = new List<FamilyTreeNode>();
@@ -1886,6 +2275,46 @@ public class Simulator
         return sb.ToString();
     }
 
+    public string ExportSchoolsAsCSV()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Name,Type,City,Founder,FoundedDate,CurrentStudents,Capacity,QualityRating,TeacherCount,Funding");
+
+        foreach (var school in _schools)
+        {
+            var city = _citiesById.ContainsKey(school.CityId) ? _citiesById[school.CityId].Name : "Unknown";
+            var founder = school.FounderId.HasValue && _peopleById.ContainsKey(school.FounderId.Value)
+                ? $"{_peopleById[school.FounderId.Value].FirstName} {_peopleById[school.FounderId.Value].LastName}"
+                : (school.FounderId.HasValue && _deadPeopleById.ContainsKey(school.FounderId.Value)
+                    ? $"{_deadPeopleById[school.FounderId.Value].FirstName} {_deadPeopleById[school.FounderId.Value].LastName}"
+                    : "Unknown");
+
+            sb.AppendLine($"\"{school.Name}\",\"{school.Type}\",\"{city}\",\"{founder}\",{school.FoundedDate:yyyy-MM-dd},{school.CurrentStudents},{school.Capacity},{school.QualityRating},{school.TeacherCount},{school.Funding}");
+        }
+
+        return sb.ToString();
+    }
+
+    public string ExportUniversitiesAsCSV()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Name,PrimaryField,City,Founder,FoundedDate,CurrentStudents,Capacity,PrestigeRating,ProfessorCount,Funding,ResearchOutput");
+
+        foreach (var university in _universities)
+        {
+            var city = _citiesById.ContainsKey(university.CityId) ? _citiesById[university.CityId].Name : "Unknown";
+            var founder = university.FounderId.HasValue && _peopleById.ContainsKey(university.FounderId.Value)
+                ? $"{_peopleById[university.FounderId.Value].FirstName} {_peopleById[university.FounderId.Value].LastName}"
+                : (university.FounderId.HasValue && _deadPeopleById.ContainsKey(university.FounderId.Value)
+                    ? $"{_deadPeopleById[university.FounderId.Value].FirstName} {_deadPeopleById[university.FounderId.Value].LastName}"
+                    : "Unknown");
+
+            sb.AppendLine($"\"{university.Name}\",\"{university.PrimaryField}\",\"{city}\",\"{founder}\",{university.FoundedDate:yyyy-MM-dd},{university.CurrentStudents},{university.Capacity},{university.PrestigeRating},{university.ProfessorCount},{university.Funding},{university.ResearchOutput}");
+        }
+
+        return sb.ToString();
+    }
+
     public string ExportAllAsJSON()
     {
         var sb = new System.Text.StringBuilder();
@@ -1948,10 +2377,14 @@ public class Simulator
     public List<City> GetAllCities() => _cities.ToList();
     public List<Country> GetAllCountries() => _countries.ToList();
     public List<Invention> GetAllInventions() => _inventions.ToList();
+    public List<School> GetAllSchools() => _schools.ToList();
+    public List<University> GetAllUniversities() => _universities.ToList();
     public Dictionary<long, Person> GetPeopleById() => new(_peopleById);
     public Dictionary<long, Person> GetDeadPeopleById() => new(_deadPeopleById);
     public Dictionary<long, City> GetCitiesById() => new(_citiesById);
     public Dictionary<long, Country> GetCountriesById() => new(_countriesById);
+    public Dictionary<long, School> GetSchoolsById() => new(_schoolsById);
+    public Dictionary<long, University> GetUniversitiesById() => new(_universitiesById);
     public DateTime GetCurrentDate() => _currentDate;
 
     // ============================================================================
@@ -1979,7 +2412,9 @@ public class Simulator
             Businesses = _businesses.ToList(),
             BusinessEmployees = _businessEmployees.ToList(),
             Disasters = _disasters.ToList(),
-            RecentEvents = _recentEvents.ToList()
+            RecentEvents = _recentEvents.ToList(),
+            Schools = _schools.ToList(),
+            Universities = _universities.ToList()
         };
 
         return System.Text.Json.JsonSerializer.Serialize(saveState, new System.Text.Json.JsonSerializerOptions
@@ -2021,6 +2456,10 @@ public class Simulator
             _businessEmployees.Clear();
             _disasters.Clear();
             _recentEvents.Clear();
+            _schools.Clear();
+            _schoolsById.Clear();
+            _universities.Clear();
+            _universitiesById.Clear();
 
             // Restore state
             _currentDate = saveState.CurrentDate;
@@ -2043,6 +2482,8 @@ public class Simulator
             _businessEmployees.AddRange(saveState.BusinessEmployees);
             _disasters.AddRange(saveState.Disasters);
             _recentEvents.AddRange(saveState.RecentEvents);
+            _schools.AddRange(saveState.Schools);
+            _universities.AddRange(saveState.Universities);
 
             // Rebuild dictionaries
             foreach (var person in _people)
@@ -2076,6 +2517,12 @@ public class Simulator
             foreach (var business in _businesses)
                 _businessesById[business.Id] = business;
 
+            foreach (var school in _schools)
+                _schoolsById[school.Id] = school;
+
+            foreach (var university in _universities)
+                _universitiesById[university.Id] = university;
+
             _livingCacheValid = false;
 
             return true;
@@ -2107,6 +2554,8 @@ public class SimulationSaveState
     public List<BusinessEmployee> BusinessEmployees { get; set; } = new();
     public List<NaturalDisaster> Disasters { get; set; } = new();
     public List<Event> RecentEvents { get; set; } = new();
+    public List<School> Schools { get; set; } = new();
+    public List<University> Universities { get; set; } = new();
 }
 
 public class SimulationStats
@@ -2149,6 +2598,16 @@ public class SimulationStats
     public List<BusinessSummary> Businesses { get; set; } = new();
     public int TotalBusinesses { get; set; }
     public int TotalDisasters { get; set; }
+
+    // EDUCATION: Education statistics
+    public int TotalSchools { get; set; }
+    public int TotalUniversities { get; set; }
+    public int TotalStudents { get; set; }
+    public int TotalUniversityStudents { get; set; }
+    public int LiteratePopulation { get; set; }
+    public double LiteracyRate { get; set; }
+    public List<SchoolSummary> Schools { get; set; } = new();
+    public List<UniversitySummary> Universities { get; set; } = new();
 
     // Population history for charts (last 100 data points)
     public List<PopulationDataPoint> PopulationHistory { get; set; } = new();
@@ -2251,6 +2710,30 @@ public class BusinessSummary
     public int Reputation { get; set; }
     public int YearsInBusiness { get; set; }
     public bool IsActive { get; set; }
+}
+
+public class SchoolSummary
+{
+    public string Name { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public string City { get; set; } = string.Empty;
+    public string Founder { get; set; } = string.Empty;
+    public int CurrentStudents { get; set; }
+    public int Capacity { get; set; }
+    public int QualityRating { get; set; }
+    public int YearsOpen { get; set; }
+}
+
+public class UniversitySummary
+{
+    public string Name { get; set; } = string.Empty;
+    public string City { get; set; } = string.Empty;
+    public string PrimaryField { get; set; } = string.Empty;
+    public string Founder { get; set; } = string.Empty;
+    public int CurrentStudents { get; set; }
+    public int Capacity { get; set; }
+    public int PrestigeRating { get; set; }
+    public int YearsOpen { get; set; }
 }
 
 public class PopulationDataPoint

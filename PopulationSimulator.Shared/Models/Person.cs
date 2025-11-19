@@ -29,6 +29,14 @@ public class Person
     public long? JobId { get; set; }
     public DateTime? JobStartDate { get; set; }
 
+    // Education
+    public string EducationLevel { get; set; } = "None"; // None, Primary, Secondary, University
+    public bool IsLiterate { get; set; }
+    public long? SchoolId { get; set; }
+    public long? UniversityId { get; set; }
+    public DateTime? GraduationDate { get; set; }
+    public int EducationQuality { get; set; } // 0-100, based on school/university quality
+
     // Genetics and Traits (0-100 scale)
     public int Intelligence { get; set; }
     public int Strength { get; set; }
@@ -104,10 +112,38 @@ public class Person
         return age >= 14;
     }
     
-    public bool IsEligibleForJob(DateTime currentDate)
+    public bool IsEligibleForJob(DateTime currentDate, bool requiresEducation = false, string? minimumEducation = null)
     {
         if (!IsAlive || JobId.HasValue) return false;
         int age = GetAge(currentDate);
+
+        if (requiresEducation)
+        {
+            if (!IsLiterate) return false;
+
+            if (minimumEducation != null)
+            {
+                var educationLevels = new[] { "None", "Primary", "Secondary", "University" };
+                var personLevel = Array.IndexOf(educationLevels, EducationLevel);
+                var requiredLevel = Array.IndexOf(educationLevels, minimumEducation);
+                if (personLevel < requiredLevel) return false;
+            }
+        }
+
         return age >= 12;
+    }
+
+    public bool IsEligibleForSchool(DateTime currentDate)
+    {
+        if (!IsAlive || SchoolId.HasValue) return false;
+        int age = GetAge(currentDate);
+        return age >= 6 && age <= 18 && EducationLevel != "University";
+    }
+
+    public bool IsEligibleForUniversity(DateTime currentDate)
+    {
+        if (!IsAlive || UniversityId.HasValue) return false;
+        int age = GetAge(currentDate);
+        return age >= 18 && age <= 30 && EducationLevel == "Secondary" && Intelligence >= 70;
     }
 }
