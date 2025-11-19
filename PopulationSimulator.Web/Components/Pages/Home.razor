@@ -405,6 +405,43 @@
         </div>
     </div>
 
+    @* Charts Section *@
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">📊 Simulation Analytics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div style="height: 300px;">
+                                <canvas id="populationChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div style="height: 300px;">
+                                <canvas id="birthDeathChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div style="height: 300px;">
+                                <canvas id="inventionChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div style="height: 300px;">
+                                <canvas id="educationChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     @if (_stats.TopJobs.Any())
     {
         <div class="row">
@@ -708,6 +745,10 @@
         }
 
         _stats = stats;
+
+        // Update charts
+        _ = UpdateCharts();
+
         InvokeAsync(StateHasChanged);
     }
 
@@ -830,6 +871,64 @@
         var bytes = System.Text.Encoding.UTF8.GetBytes(content);
         var base64 = Convert.ToBase64String(bytes);
         await JSRuntime.InvokeVoidAsync("downloadFile", filename, base64, contentType);
+    }
+
+    // ============================================================================
+    // CHART FUNCTIONS
+    // ============================================================================
+
+    private async Task UpdateCharts()
+    {
+        try
+        {
+            // Population chart data
+            var popData = new
+            {
+                labels = _stats.PopulationHistory.Select(p => $"Year {p.Year}").ToArray(),
+                living = _stats.PopulationHistory.Select(p => p.Living).ToArray()
+            };
+            await JSRuntime.InvokeVoidAsync("charts.updatePopulationChart", "populationChart", popData);
+
+            // Birth/Death chart data
+            var birthDeathData = new
+            {
+                labels = _stats.PopulationHistory.Select(p => $"Year {p.Year}").ToArray(),
+                births = _stats.PopulationHistory.Select(p => p.Births).ToArray(),
+                deaths = _stats.PopulationHistory.Select(p => p.Deaths).ToArray()
+            };
+            await JSRuntime.InvokeVoidAsync("charts.updateBirthDeathChart", "birthDeathChart", birthDeathData);
+
+            // Invention timeline (group by decade)
+            var inventions = SimulatorService.GetAllInventions();
+            var inventionsByDecade = inventions
+                .GroupBy(i => (i.DiscoveryDate.Year / 10) * 10)
+                .OrderBy(g => g.Key)
+                .Take(20) // Last 20 decades
+                .ToList();
+            var inventionData = new
+            {
+                labels = inventionsByDecade.Select(g => $"{g.Key}s").ToArray(),
+                inventions = inventionsByDecade.Select(g => g.Count()).ToArray()
+            };
+            await JSRuntime.InvokeVoidAsync("charts.updateInventionTimelineChart", "inventionChart", inventionData);
+
+            // Education distribution
+            var people = SimulatorService.GetAllPeople().Where(p => p.IsAlive).ToList();
+            var educationCounts = people.GroupBy(p => p.EducationLevel)
+                .Select(g => new { Level = g.Key, Count = g.Count() })
+                .ToList();
+            var educationData = new
+            {
+                labels = educationCounts.Select(e => e.Level).ToArray(),
+                values = educationCounts.Select(e => e.Count).ToArray()
+            };
+            await JSRuntime.InvokeVoidAsync("charts.updateEducationChart", "educationChart", educationData);
+        }
+        catch (Exception ex)
+        {
+            // Silently fail if charts aren't ready yet
+            Console.WriteLine($"Chart update error: {ex.Message}");
+        }
     }
 
     // ============================================================================

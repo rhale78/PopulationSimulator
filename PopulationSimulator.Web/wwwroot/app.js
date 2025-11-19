@@ -139,3 +139,236 @@ function getNotificationIcon(type) {
         default: return 'ℹ️';
     }
 }
+
+// Chart.js functionality
+window.charts = {
+    instances: {},
+
+    createPopulationChart: function (canvasId, data) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        // Destroy existing chart
+        if (this.instances[canvasId]) {
+            this.instances[canvasId].destroy();
+        }
+
+        const ctx = canvas.getContext('2d');
+        this.instances[canvasId] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Living Population',
+                    data: data.living,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    tension: 0.1,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Population Over Time'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    },
+
+    createBirthDeathChart: function (canvasId, data) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        if (this.instances[canvasId]) {
+            this.instances[canvasId].destroy();
+        }
+
+        const ctx = canvas.getContext('2d');
+        this.instances[canvasId] = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Births',
+                    data: data.births,
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.1
+                }, {
+                    label: 'Deaths',
+                    data: data.deaths,
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Birth & Death Rates'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    },
+
+    createInventionTimelineChart: function (canvasId, data) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        if (this.instances[canvasId]) {
+            this.instances[canvasId].destroy();
+        }
+
+        const ctx = canvas.getContext('2d');
+        this.instances[canvasId] = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Inventions Discovered',
+                    data: data.inventions,
+                    backgroundColor: 'rgba(255, 206, 86, 0.6)',
+                    borderColor: 'rgba(255, 206, 86, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Invention Discovery Timeline'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    },
+
+    createEducationChart: function (canvasId, data) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+
+        if (this.instances[canvasId]) {
+            this.instances[canvasId].destroy();
+        }
+
+        const ctx = canvas.getContext('2d');
+        this.instances[canvasId] = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Education Levels',
+                    data: data.values,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(75, 192, 192, 0.6)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'right'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Education Distribution'
+                    }
+                }
+            }
+        });
+    },
+
+    updatePopulationChart: function (canvasId, data) {
+        if (this.instances[canvasId]) {
+            this.instances[canvasId].data.labels = data.labels;
+            this.instances[canvasId].data.datasets[0].data = data.living;
+            this.instances[canvasId].update('none'); // Update without animation for performance
+        } else {
+            this.createPopulationChart(canvasId, data);
+        }
+    },
+
+    updateBirthDeathChart: function (canvasId, data) {
+        if (this.instances[canvasId]) {
+            this.instances[canvasId].data.labels = data.labels;
+            this.instances[canvasId].data.datasets[0].data = data.births;
+            this.instances[canvasId].data.datasets[1].data = data.deaths;
+            this.instances[canvasId].update('none');
+        } else {
+            this.createBirthDeathChart(canvasId, data);
+        }
+    },
+
+    updateInventionTimelineChart: function (canvasId, data) {
+        if (this.instances[canvasId]) {
+            this.instances[canvasId].data.labels = data.labels;
+            this.instances[canvasId].data.datasets[0].data = data.inventions;
+            this.instances[canvasId].update('none');
+        } else {
+            this.createInventionTimelineChart(canvasId, data);
+        }
+    },
+
+    updateEducationChart: function (canvasId, data) {
+        if (this.instances[canvasId]) {
+            this.instances[canvasId].data.labels = data.labels;
+            this.instances[canvasId].data.datasets[0].data = data.values;
+            this.instances[canvasId].update('none');
+        } else {
+            this.createEducationChart(canvasId, data);
+        }
+    }
+};
