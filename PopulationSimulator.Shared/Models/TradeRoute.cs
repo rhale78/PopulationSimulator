@@ -9,5 +9,5 @@ public class TradeRoute
     public decimal TradeVolume { get; set; }
     public string GoodsTraded { get; set; } = string.Empty; // Comma-separated
     public bool IsActive { get; set; } = true;
-    public decimal TotalWealth Generated { get; set; }
+    public decimal TotalWealthGenerated { get; set; }
 }
