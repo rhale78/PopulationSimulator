@@ -126,7 +126,7 @@ public class GeniusSystem
     /// <summary>
     /// Calculate religion founding bonus for religious visionaries
     /// </summary>
-    public double GetReligiousBo nus(Person person, string geniusType)
+    public double GetReligiousBonus(Person person, string geniusType)
     {
         if (geniusType == "Religious Visionary")
         {
