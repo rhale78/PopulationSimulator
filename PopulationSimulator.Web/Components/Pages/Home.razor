@@ -1,7 +1,9 @@
 ﻿@page "/"
 @using PopulationSimulator.Core
 @using PopulationSimulator.Services
+@using Microsoft.JSInterop
 @inject SimulatorService SimulatorService
+@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 @implements IDisposable
 
@@ -10,13 +12,16 @@
 <div class="container-fluid mt-3">
     @* Controls at top as requested *@
     <div class="row mb-3">
-        <div class="col-12">
+        <div class="col-md-6">
             <div class="card">
                 <div class="card-header bg-dark text-white">
                     <h5 class="mb-0">⚙️ Controls</h5>
                 </div>
                 <div class="card-body">
                     <div class="btn-group me-3" role="group">
+                        <button class="btn @(_isPaused ? "btn-success" : "btn-secondary")" @onclick="TogglePause">
+                            @(_isPaused ? "▶️ Resume" : "⏸️ Pause")
+                        </button>
                         <button class="btn btn-success" @onclick="SimulatorService.IncreaseSpeed">
                             ➕ Speed Up
                         </button>
@@ -27,7 +32,251 @@
                             🔄 Restart
                         </button>
                     </div>
-                    <span class="text-muted">Current speed: @_simulationSpeed x (1 day per @((int)(1000.0 / Math.Max(1, _simulationSpeed)))ms)</span>
+                    <button class="btn btn-outline-secondary ms-2" @onclick="ToggleDarkMode">
+                        @(_isDarkMode ? "☀️ Light" : "🌙 Dark")
+                    </button>
+                    <div class="mt-2">
+                        <span class="text-muted">Current speed: @_simulationSpeed x (1 day per @((int)(1000.0 / Math.Max(1, _simulationSpeed)))ms)</span><br/>
+                        <span class="text-muted">Status: @(_isPaused ? "⏸️ PAUSED" : "▶️ Running")</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">📥 Export Data</h5>
+                </div>
+                <div class="card-body">
+                    <div class="btn-group-vertical d-grid gap-1" role="group">
+                        <button class="btn btn-sm btn-outline-primary" @onclick="ExportPopulation">
+                            💾 Export Population (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="ExportCities">
+                            🏙️ Export Cities (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary" @onclick="ExportCountries">
+                            🌍 Export Countries (CSV)
+                        </button>
+                    </div>
+                    <div class="btn-group-vertical d-grid gap-1 mt-2" role="group">
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportInventions">
+                            💡 Export Inventions (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportDisasters">
+                            🌋 Export Disasters (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportBusinesses">
+                            🏪 Export Businesses (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportSchools">
+                            🎓 Export Schools (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportUniversities">
+                            🏛️ Export Universities (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="ExportEvents">
+                            📰 Export Events (CSV)
+                        </button>
+                        <button class="btn btn-sm btn-success" @onclick="ExportAllJSON">
+                            📦 Export All (JSON)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Save/Load Section *@
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">💾 Save / Load Simulation</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Save Current Simulation</h6>
+                            <p class="text-muted small">Save the entire simulation state to a file. You can load it later to continue from this point.</p>
+                            <button class="btn btn-success" @onclick="SaveSimulation">
+                                💾 Save Simulation
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Load Saved Simulation</h6>
+                            <p class="text-muted small">Load a previously saved simulation file to restore all data and continue where you left off.</p>
+                            <InputFile OnChange="HandleFileUpload" accept=".json" class="form-control mb-2" />
+                            @if (!string.IsNullOrEmpty(_loadStatus))
+                            {
+                                <div class="alert @(_loadSuccess ? "alert-success" : "alert-danger") alert-dismissible fade show mt-2" role="alert">
+                                    @_loadStatus
+                                    <button type="button" class="btn-close" @onclick="() => _loadStatus = string.Empty"></button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Search & Filter Section *@
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">🔍 Search & Filter</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Search Type</label>
+                            <select class="form-select" @bind="_searchType">
+                                <option value="People">People</option>
+                                <option value="Cities">Cities</option>
+                                <option value="Countries">Countries</option>
+                                <option value="Inventions">Inventions</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Search Query</label>
+                            <input type="text" class="form-control" placeholder="Enter name to search..." @bind="_searchQuery" @bind:event="oninput" />
+                        </div>
+                    </div>
+
+                    @if (_searchType == "People")
+                    {
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Gender</label>
+                                <select class="form-select" @bind="_filterGender">
+                                    <option value="">All</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" @bind="_filterStatus">
+                                    <option value="">All</option>
+                                    <option value="Alive">Alive</option>
+                                    <option value="Dead">Dead</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Min Age</label>
+                                <input type="number" class="form-control" @bind="_filterMinAge" placeholder="0" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Max Age</label>
+                                <input type="number" class="form-control" @bind="_filterMaxAge" placeholder="999" />
+                            </div>
+                        </div>
+                    }
+
+                    @if (_searchType == "Cities")
+                    {
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Geography</label>
+                                <select class="form-select" @bind="_filterGeography">
+                                    <option value="">All</option>
+                                    <option value="Coastal">Coastal</option>
+                                    <option value="Mountain">Mountain</option>
+                                    <option value="Plains">Plains</option>
+                                    <option value="Desert">Desert</option>
+                                    <option value="Forest">Forest</option>
+                                    <option value="RiverValley">River Valley</option>
+                                    <option value="Island">Island</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Climate</label>
+                                <select class="form-select" @bind="_filterClimate">
+                                    <option value="">All</option>
+                                    <option value="Tropical">Tropical</option>
+                                    <option value="Temperate">Temperate</option>
+                                    <option value="Arid">Arid</option>
+                                    <option value="Arctic">Arctic</option>
+                                    <option value="Mediterranean">Mediterranean</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Min Population</label>
+                                <input type="number" class="form-control" @bind="_filterMinPopulation" placeholder="0" />
+                            </div>
+                        </div>
+                    }
+
+                    <button class="btn btn-primary" @onclick="PerformSearch">
+                        🔍 Search
+                    </button>
+                    <button class="btn btn-secondary ms-2" @onclick="ClearSearch">
+                        Clear
+                    </button>
+
+                    @if (_searchResults != null && _searchResults.Any())
+                    {
+                        <div class="mt-3">
+                            <h6>Results (@_searchResults.Count)</h6>
+                            <div style="max-height: 400px; overflow-y: auto;">
+                                <table class="table table-striped table-sm">
+                                    <thead>
+                                        <tr>
+                                            @if (_searchType == "People")
+                                            {
+                                                <th>Name</th>
+                                                <th>Gender</th>
+                                                <th>Age</th>
+                                                <th>Status</th>
+                                                <th>City</th>
+                                            }
+                                            else if (_searchType == "Cities")
+                                            {
+                                                <th>Name</th>
+                                                <th>Population</th>
+                                                <th>Geography</th>
+                                                <th>Climate</th>
+                                                <th>Country</th>
+                                            }
+                                            else if (_searchType == "Countries")
+                                            {
+                                                <th>Name</th>
+                                                <th>Population</th>
+                                                <th>Government</th>
+                                                <th>Wealth</th>
+                                                <th>Military</th>
+                                            }
+                                            else if (_searchType == "Inventions")
+                                            {
+                                                <th>Name</th>
+                                                <th>Category</th>
+                                                <th>Inventor</th>
+                                                <th>Year</th>
+                                            }
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var result in _searchResults.Take(100))
+                                        {
+                                            <tr>
+                                                @((MarkupString)result)
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                                @if (_searchResults.Count > 100)
+                                {
+                                    <p class="text-muted">Showing first 100 results of @_searchResults.Count</p>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (_searchResults != null)
+                    {
+                        <div class="alert alert-info mt-3">No results found.</div>
+                    }
                 </div>
             </div>
         </div>
@@ -42,16 +291,16 @@
                 </div>
                 <div class="card-body">
                     <div class="row text-center">
-                        <div class="col-md-3">
+                        <div class="col-md-3" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Current simulation date in the virtual world">
                             <strong>Current Date:</strong> Year @_stats.CurrentDate.Year, Day @_stats.CurrentDate.DayOfYear
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-3" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Number of generations since Adam and Eve">
                             <strong>Generation:</strong> @_stats.GenerationNumber
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-3" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Living population gender distribution">
                             <strong>Gender:</strong> @_stats.MaleCount ♂ / @_stats.FemaleCount ♀
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-3" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Simulation speed multiplier (use +/- keys to adjust)">
                             <strong>Speed:</strong> @_simulationSpeed x
                         </div>
                     </div>
@@ -75,31 +324,31 @@
                 <div class="card-body">
                     <table class="table table-sm">
                         <tbody>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="left" title="Total number of people ever born in the simulation">
                                 <td><strong>Total Population:</strong></td>
                                 <td class="text-end">@_stats.TotalPopulation</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="left" title="Current living population count">
                                 <td><strong>Living:</strong></td>
                                 <td class="text-end">@_stats.LivingPopulation</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="left" title="Living males in the population">
                                 <td><strong>Males:</strong></td>
                                 <td class="text-end">@_stats.MaleCount</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="left" title="Living females in the population">
                                 <td><strong>Females:</strong></td>
                                 <td class="text-end">@_stats.FemaleCount</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="left" title="Total births throughout history">
                                 <td><strong>Total Births:</strong></td>
                                 <td class="text-end">@_stats.TotalBirths</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="left" title="Total deaths throughout history">
                                 <td><strong>Total Deaths:</strong></td>
                                 <td class="text-end">@_stats.TotalDeaths</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="left" title="Total marriages formed in the simulation">
                                 <td><strong>Total Marriages:</strong></td>
                                 <td class="text-end">@_stats.TotalMarriages</td>
                             </tr>
@@ -117,28 +366,166 @@
                 <div class="card-body">
                     <table class="table table-sm">
                         <tbody>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of cities founded with varying geographies and climates">
                                 <td><strong>Cities:</strong></td>
                                 <td class="text-end">@_stats.TotalCities</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of countries established in the simulation">
                                 <td><strong>Countries:</strong></td>
                                 <td class="text-end">@_stats.TotalCountries</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of religions founded by the population">
                                 <td><strong>Religions:</strong></td>
                                 <td class="text-end">@_stats.TotalReligions</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of inventions discovered (affects disasters, health, and economy)">
                                 <td><strong>Inventions:</strong></td>
                                 <td class="text-end">@_stats.TotalInventions</td>
                             </tr>
-                            <tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of wars fought between countries">
                                 <td><strong>Wars:</strong></td>
                                 <td class="text-end">@_stats.TotalWars</td>
                             </tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of schools founded to educate children">
+                                <td><strong>Schools:</strong></td>
+                                <td class="text-end">@_stats.TotalSchools (@_stats.TotalStudents students)</td>
+                            </tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Number of universities founded for advanced education">
+                                <td><strong>Universities:</strong></td>
+                                <td class="text-end">@_stats.TotalUniversities (@_stats.TotalUniversityStudents students)</td>
+                            </tr>
+                            <tr data-bs-toggle="tooltip" data-bs-placement="right" title="Percentage of population that can read and write">
+                                <td><strong>Literacy Rate:</strong></td>
+                                <td class="text-end">@_stats.LiteracyRate.ToString("F1")% (@_stats.LiteratePopulation people)</td>
+                            </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Map Visualization Section *@
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">🗺️ World Map</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm @(_mapMode == "geography" ? "btn-primary" : "btn-outline-primary")" @onclick='() => _mapMode = "geography"'>
+                                    Geography
+                                </button>
+                                <button type="button" class="btn btn-sm @(_mapMode == "climate" ? "btn-primary" : "btn-outline-primary")" @onclick='() => _mapMode = "climate"'>
+                                    Climate
+                                </button>
+                                <button type="button" class="btn btn-sm @(_mapMode == "population" ? "btn-primary" : "btn-outline-primary")" @onclick='() => _mapMode = "population"'>
+                                    Population
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="map-container" style="position: relative; width: 100%; height: 500px; background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 50%, #90EE90 100%); border: 2px solid #666; border-radius: 8px; overflow: hidden;">
+                        @if (_stats.TotalCities > 0)
+                        {
+                            var cities = SimulatorService.GetAllCities();
+                            var countries = SimulatorService.GetAllCountries();
+                            var countryDict = countries.ToDictionary(c => c.Id);
+
+                            @foreach (var (city, index) in cities.Select((c, i) => (c, i)))
+                            {
+                                var x = ((index % 10) * 10 + 5);
+                                var y = ((index / 10) * 10 + 5);
+                                var color = GetCityColor(city);
+                                var size = Math.Max(8, Math.Min(30, city.Population / 20));
+
+                                <div class="city-marker"
+                                     style="position: absolute; left: @(x)%; top: @(y)%; transform: translate(-50%, -50%);"
+                                     data-bs-toggle="tooltip"
+                                     title="@($"{city.Name} - Pop: {city.Population}, {city.Geography}, {city.Climate}")">
+                                    <div style="width: @(size)px; height: @(size)px; background: @color; border: 2px solid #333; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>
+                                    <div style="position: absolute; top: @(size + 2)px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 1px 2px #000;">
+                                        @city.Name
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <div class="d-flex align-items-center justify-content-center h-100">
+                                <p class="text-muted">No cities founded yet...</p>
+                            </div>
+                        }
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <small class="text-muted">
+                                <strong>Legend:</strong>
+                                @if (_mapMode == "geography")
+                                {
+                                    <span class="ms-2">🟦 Coastal</span>
+                                    <span class="ms-2">🟫 Mountain</span>
+                                    <span class="ms-2">🟩 Plains</span>
+                                    <span class="ms-2">🟨 Desert</span>
+                                    <span class="ms-2">🟢 Forest</span>
+                                    <span class="ms-2">🔵 River Valley</span>
+                                    <span class="ms-2">🏝️ Island</span>
+                                }
+                                else if (_mapMode == "climate")
+                                {
+                                    <span class="ms-2">🌴 Tropical</span>
+                                    <span class="ms-2">🌤️ Temperate</span>
+                                    <span class="ms-2">🏜️ Arid</span>
+                                    <span class="ms-2">❄️ Arctic</span>
+                                    <span class="ms-2">🏖️ Mediterranean</span>
+                                }
+                                else
+                                {
+                                    <span class="ms-2">Larger circles = Higher population</span>
+                                }
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Charts Section *@
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">📊 Simulation Analytics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div style="height: 300px;">
+                                <canvas id="populationChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div style="height: 300px;">
+                                <canvas id="birthDeathChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div style="height: 300px;">
+                                <canvas id="inventionChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div style="height: 300px;">
+                                <canvas id="educationChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -309,21 +696,157 @@
 @code {
     private SimulationStats _stats = new();
     private int _simulationSpeed = 1;
+    private bool _isPaused = false;
+    private bool _isDarkMode = false;
+
+    // Milestone tracking
+    private HashSet<int> _populationMilestones = new() { 10, 50, 100, 500, 1000, 5000, 10000 };
+    private HashSet<int> _citiesMilestones = new() { 1, 5, 10, 25, 50 };
+    private HashSet<int> _inventionMilestones = new() { 1, 10, 25, 50, 100 };
+    private int _lastPopulation = 0;
+    private int _lastCities = 0;
+    private int _lastInventions = 0;
+
+    // Save/Load status
+    private string _loadStatus = string.Empty;
+    private bool _loadSuccess = false;
+
+    // Search & Filter state
+    private string _searchType = "People";
+    private string _searchQuery = string.Empty;
+    private string _filterGender = string.Empty;
+    private string _filterStatus = string.Empty;
+    private int? _filterMinAge = null;
+    private int? _filterMaxAge = null;
+    private string _filterGeography = string.Empty;
+    private string _filterClimate = string.Empty;
+    private int? _filterMinPopulation = null;
+    private List<string>? _searchResults = null;
+
+    // Map visualization state
+    private string _mapMode = "geography";
 
     protected override void OnInitialized()
     {
         SimulatorService.OnStatsUpdated += HandleStatsUpdated;
         SimulatorService.OnSpeedChanged += HandleSpeedChanged;
         SimulatorService.OnSimulationRestarted += HandleSimulationRestarted;
-        
+        SimulatorService.OnPausedChanged += HandlePausedChanged;
+
         // Start the simulation
         SimulatorService.Start();
     }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Setup keyboard shortcuts
+            var dotNetRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("setupKeyboardShortcuts", dotNetRef);
+
+            // Initialize dark mode state
+            _isDarkMode = await JSRuntime.InvokeAsync<bool>("darkMode.isDarkMode");
+
+            // Initialize Bootstrap tooltips
+            await JSRuntime.InvokeVoidAsync("initializeTooltips");
+
+            StateHasChanged();
+        }
+        else
+        {
+            // Refresh tooltips after UI updates
+            await JSRuntime.InvokeVoidAsync("refreshTooltips");
+        }
+    }
+
+    [JSInvokable]
+    public void HandleKeyPress(string key)
+    {
+        switch (key)
+        {
+            case "Space":
+                TogglePause();
+                break;
+            case "Plus":
+                SimulatorService.IncreaseSpeed();
+                break;
+            case "Minus":
+                SimulatorService.DecreaseSpeed();
+                break;
+        }
+    }
+
     private void HandleStatsUpdated(SimulationStats stats)
     {
+        // Check for population milestones
+        if (stats.LivingPopulation != _lastPopulation)
+        {
+            foreach (var milestone in _populationMilestones)
+            {
+                if (_lastPopulation < milestone && stats.LivingPopulation >= milestone)
+                {
+                    _ = ShowNotification($"Population reached {milestone}!", "success");
+                    _populationMilestones.Remove(milestone); // Only show once
+                    break;
+                }
+            }
+            _lastPopulation = stats.LivingPopulation;
+        }
+
+        // Check for first city
+        if (_lastCities == 0 && stats.TotalCities > 0)
+        {
+            _ = ShowNotification("First city founded! Civilization begins!", "info");
+        }
+
+        // Check for city milestones
+        if (stats.TotalCities != _lastCities)
+        {
+            foreach (var milestone in _citiesMilestones)
+            {
+                if (_lastCities < milestone && stats.TotalCities >= milestone)
+                {
+                    _ = ShowNotification($"{milestone} cities founded!", "info");
+                    _citiesMilestones.Remove(milestone);
+                    break;
+                }
+            }
+            _lastCities = stats.TotalCities;
+        }
+
+        // Check for invention milestones
+        if (stats.TotalInventions != _lastInventions)
+        {
+            foreach (var milestone in _inventionMilestones)
+            {
+                if (_lastInventions < milestone && stats.TotalInventions >= milestone)
+                {
+                    _ = ShowNotification($"{milestone} inventions discovered!", "success");
+                    _inventionMilestones.Remove(milestone);
+                    break;
+                }
+            }
+            _lastInventions = stats.TotalInventions;
+        }
+
+        // Check for simulation end
+        if (stats.SimulationEnded && !_stats.SimulationEnded)
+        {
+            _ = ShowNotification($"Simulation ended: {stats.EndReason}", "danger", 10000);
+        }
+
         _stats = stats;
+
+        // Update charts
+        _ = UpdateCharts();
+
         InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ShowNotification(string message, string type, int duration = 5000)
+    {
+        await JSRuntime.InvokeVoidAsync("showNotification", message, type, duration);
     }
 
     private void HandleSpeedChanged(int speed)
@@ -336,12 +859,442 @@
     {
         _stats = new SimulationStats();
         _simulationSpeed = 1;
+        _isPaused = false;
+
+        // Reset milestone tracking
+        _populationMilestones = new() { 10, 50, 100, 500, 1000, 5000, 10000 };
+        _citiesMilestones = new() { 1, 5, 10, 25, 50 };
+        _inventionMilestones = new() { 1, 10, 25, 50, 100 };
+        _lastPopulation = 0;
+        _lastCities = 0;
+        _lastInventions = 0;
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandlePausedChanged(bool isPaused)
+    {
+        _isPaused = isPaused;
         InvokeAsync(StateHasChanged);
     }
 
     private void RestartSimulation()
     {
         SimulatorService.Restart();
+    }
+
+    private void TogglePause()
+    {
+        SimulatorService.TogglePause();
+    }
+
+    private async Task ToggleDarkMode()
+    {
+        _isDarkMode = await JSRuntime.InvokeAsync<bool>("darkMode.toggle");
+        StateHasChanged();
+    }
+
+    // ============================================================================
+    // EXPORT FUNCTIONS
+    // ============================================================================
+
+    private async Task ExportPopulation()
+    {
+        var csv = SimulatorService.ExportPopulationAsCSV();
+        await DownloadFile($"population_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportCities()
+    {
+        var csv = SimulatorService.ExportCitiesAsCSV();
+        await DownloadFile($"cities_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportCountries()
+    {
+        var csv = SimulatorService.ExportCountriesAsCSV();
+        await DownloadFile($"countries_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportInventions()
+    {
+        var csv = SimulatorService.ExportInventionsAsCSV();
+        await DownloadFile($"inventions_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportDisasters()
+    {
+        var csv = SimulatorService.ExportDisastersAsCSV();
+        await DownloadFile($"disasters_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportBusinesses()
+    {
+        var csv = SimulatorService.ExportBusinessesAsCSV();
+        await DownloadFile($"businesses_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportEvents()
+    {
+        var csv = SimulatorService.ExportEventsAsCSV();
+        await DownloadFile($"events_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportSchools()
+    {
+        var csv = SimulatorService.ExportSchoolsAsCSV();
+        await DownloadFile($"schools_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportUniversities()
+    {
+        var csv = SimulatorService.ExportUniversitiesAsCSV();
+        await DownloadFile($"universities_{_stats.CurrentDate:yyyy-MM-dd}.csv", csv, "text/csv");
+    }
+
+    private async Task ExportAllJSON()
+    {
+        var json = SimulatorService.ExportAllAsJSON();
+        await DownloadFile($"simulation_{_stats.CurrentDate:yyyy-MM-dd}.json", json, "application/json");
+    }
+
+    private async Task DownloadFile(string filename, string content, string contentType)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+        var base64 = Convert.ToBase64String(bytes);
+        await JSRuntime.InvokeVoidAsync("downloadFile", filename, base64, contentType);
+    }
+
+    // ============================================================================
+    // CHART FUNCTIONS
+    // ============================================================================
+
+    private async Task UpdateCharts()
+    {
+        try
+        {
+            // Population chart data
+            var popData = new
+            {
+                labels = _stats.PopulationHistory.Select(p => $"Year {p.Year}").ToArray(),
+                living = _stats.PopulationHistory.Select(p => p.Living).ToArray()
+            };
+            await JSRuntime.InvokeVoidAsync("charts.updatePopulationChart", "populationChart", popData);
+
+            // Birth/Death chart data
+            var birthDeathData = new
+            {
+                labels = _stats.PopulationHistory.Select(p => $"Year {p.Year}").ToArray(),
+                births = _stats.PopulationHistory.Select(p => p.Births).ToArray(),
+                deaths = _stats.PopulationHistory.Select(p => p.Deaths).ToArray()
+            };
+            await JSRuntime.InvokeVoidAsync("charts.updateBirthDeathChart", "birthDeathChart", birthDeathData);
+
+            // Invention timeline (group by decade)
+            var inventions = SimulatorService.GetAllInventions();
+            var inventionsByDecade = inventions
+                .GroupBy(i => (i.DiscoveryDate.Year / 10) * 10)
+                .OrderBy(g => g.Key)
+                .Take(20) // Last 20 decades
+                .ToList();
+            var inventionData = new
+            {
+                labels = inventionsByDecade.Select(g => $"{g.Key}s").ToArray(),
+                inventions = inventionsByDecade.Select(g => g.Count()).ToArray()
+            };
+            await JSRuntime.InvokeVoidAsync("charts.updateInventionTimelineChart", "inventionChart", inventionData);
+
+            // Education distribution
+            var people = SimulatorService.GetAllPeople().Where(p => p.IsAlive).ToList();
+            var educationCounts = people.GroupBy(p => p.EducationLevel)
+                .Select(g => new { Level = g.Key, Count = g.Count() })
+                .ToList();
+            var educationData = new
+            {
+                labels = educationCounts.Select(e => e.Level).ToArray(),
+                values = educationCounts.Select(e => e.Count).ToArray()
+            };
+            await JSRuntime.InvokeVoidAsync("charts.updateEducationChart", "educationChart", educationData);
+        }
+        catch (Exception ex)
+        {
+            // Silently fail if charts aren't ready yet
+            Console.WriteLine($"Chart update error: {ex.Message}");
+        }
+    }
+
+    // ============================================================================
+    // SAVE/LOAD FUNCTIONS
+    // ============================================================================
+
+    private async Task SaveSimulation()
+    {
+        try
+        {
+            var json = SimulatorService.SaveSimulation();
+            await DownloadFile($"simulation_save_{_stats.CurrentDate:yyyy-MM-dd_HHmmss}.json", json, "application/json");
+            await ShowNotification("Simulation saved successfully!", "success");
+        }
+        catch (Exception ex)
+        {
+            await ShowNotification($"Error saving simulation: {ex.Message}", "danger");
+        }
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        _loadStatus = string.Empty;
+        _loadSuccess = false;
+
+        try
+        {
+            var file = e.File;
+            if (file == null)
+            {
+                _loadStatus = "No file selected.";
+                _loadSuccess = false;
+                return;
+            }
+
+            // Read file content
+            var buffer = new byte[file.Size];
+            await file.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024).ReadAsync(buffer); // 100 MB max
+            var json = System.Text.Encoding.UTF8.GetString(buffer);
+
+            // Load the simulation
+            bool success = SimulatorService.LoadSimulation(json);
+
+            if (success)
+            {
+                _loadStatus = $"Simulation loaded successfully! Date: {_stats.CurrentDate:yyyy-MM-dd}";
+                _loadSuccess = true;
+
+                // Reset milestone tracking for new simulation
+                _populationMilestones = new() { 10, 50, 100, 500, 1000, 5000, 10000 };
+                _citiesMilestones = new() { 1, 5, 10, 25, 50 };
+                _inventionMilestones = new() { 1, 10, 25, 50, 100 };
+                _lastPopulation = 0;
+                _lastCities = 0;
+                _lastInventions = 0;
+
+                await ShowNotification("Simulation loaded successfully!", "success");
+            }
+            else
+            {
+                _loadStatus = "Failed to load simulation. The file may be corrupted or invalid.";
+                _loadSuccess = false;
+                await ShowNotification("Failed to load simulation file.", "danger");
+            }
+        }
+        catch (Exception ex)
+        {
+            _loadStatus = $"Error loading simulation: {ex.Message}";
+            _loadSuccess = false;
+            await ShowNotification($"Error loading simulation: {ex.Message}", "danger");
+        }
+    }
+
+    // ============================================================================
+    // SEARCH & FILTER FUNCTIONS
+    // ============================================================================
+
+    private void PerformSearch()
+    {
+        _searchResults = new List<string>();
+
+        if (_searchType == "People")
+        {
+            var people = SimulatorService.GetAllPeople();
+            var currentDate = SimulatorService.GetCurrentDate();
+            var citiesById = SimulatorService.GetCitiesById();
+
+            var filtered = people.Where(p =>
+            {
+                bool matches = true;
+
+                // Name search
+                if (!string.IsNullOrWhiteSpace(_searchQuery))
+                {
+                    var fullName = $"{p.FirstName} {p.LastName}".ToLower();
+                    matches = matches && fullName.Contains(_searchQuery.ToLower());
+                }
+
+                // Gender filter
+                if (!string.IsNullOrEmpty(_filterGender))
+                    matches = matches && p.Gender == _filterGender;
+
+                // Status filter
+                if (!string.IsNullOrEmpty(_filterStatus))
+                    matches = matches && ((p.IsAlive && _filterStatus == "Alive") || (!p.IsAlive && _filterStatus == "Dead"));
+
+                // Age filter
+                var age = p.GetAge(currentDate);
+                if (_filterMinAge.HasValue)
+                    matches = matches && age >= _filterMinAge.Value;
+                if (_filterMaxAge.HasValue)
+                    matches = matches && age <= _filterMaxAge.Value;
+
+                return matches;
+            }).ToList();
+
+            foreach (var person in filtered)
+            {
+                var age = person.GetAge(currentDate);
+                var city = person.CityId.HasValue && citiesById.ContainsKey(person.CityId.Value) ? citiesById[person.CityId.Value].Name : "Nomad";
+                var status = person.IsAlive ? "✅ Alive" : "⚰️ Dead";
+
+                _searchResults.Add($"<td>{person.FirstName} {person.LastName}</td><td>{person.Gender}</td><td>{age}</td><td>{status}</td><td>{city}</td>");
+            }
+        }
+        else if (_searchType == "Cities")
+        {
+            var cities = SimulatorService.GetAllCities();
+            var countriesById = SimulatorService.GetCountriesById();
+
+            var filtered = cities.Where(c =>
+            {
+                bool matches = true;
+
+                // Name search
+                if (!string.IsNullOrWhiteSpace(_searchQuery))
+                    matches = matches && c.Name.ToLower().Contains(_searchQuery.ToLower());
+
+                // Geography filter
+                if (!string.IsNullOrEmpty(_filterGeography))
+                    matches = matches && c.Geography == _filterGeography;
+
+                // Climate filter
+                if (!string.IsNullOrEmpty(_filterClimate))
+                    matches = matches && c.Climate == _filterClimate;
+
+                // Min population filter
+                if (_filterMinPopulation.HasValue)
+                    matches = matches && c.Population >= _filterMinPopulation.Value;
+
+                return matches;
+            }).ToList();
+
+            foreach (var city in filtered)
+            {
+                var country = city.CountryId.HasValue && countriesById.ContainsKey(city.CountryId.Value) ? countriesById[city.CountryId.Value].Name : "Independent";
+
+                _searchResults.Add($"<td>{city.Name}</td><td>{city.Population}</td><td>{city.Geography}</td><td>{city.Climate}</td><td>{country}</td>");
+            }
+        }
+        else if (_searchType == "Countries")
+        {
+            var countries = SimulatorService.GetAllCountries();
+
+            var filtered = countries.Where(c =>
+            {
+                bool matches = true;
+
+                // Name search
+                if (!string.IsNullOrWhiteSpace(_searchQuery))
+                    matches = matches && c.Name.ToLower().Contains(_searchQuery.ToLower());
+
+                return matches;
+            }).ToList();
+
+            foreach (var country in filtered)
+            {
+                _searchResults.Add($"<td>{country.Name}</td><td>{country.Population}</td><td>{country.GovernmentType}</td><td>{country.Wealth:F0}</td><td>{country.MilitaryStrength}</td>");
+            }
+        }
+        else if (_searchType == "Inventions")
+        {
+            var inventions = SimulatorService.GetAllInventions();
+            var peopleById = SimulatorService.GetPeopleById();
+            var deadPeopleById = SimulatorService.GetDeadPeopleById();
+
+            var filtered = inventions.Where(inv =>
+            {
+                bool matches = true;
+
+                // Name search
+                if (!string.IsNullOrWhiteSpace(_searchQuery))
+                    matches = matches && inv.Name.ToLower().Contains(_searchQuery.ToLower());
+
+                return matches;
+            }).ToList();
+
+            foreach (var invention in filtered)
+            {
+                var inventor = "Unknown";
+                if (invention.InventorId.HasValue)
+                {
+                    if (peopleById.ContainsKey(invention.InventorId.Value))
+                    {
+                        var p = peopleById[invention.InventorId.Value];
+                        inventor = $"{p.FirstName} {p.LastName}";
+                    }
+                    else if (deadPeopleById.ContainsKey(invention.InventorId.Value))
+                    {
+                        var p = deadPeopleById[invention.InventorId.Value];
+                        inventor = $"{p.FirstName} {p.LastName}";
+                    }
+                }
+
+                _searchResults.Add($"<td>{invention.Name}</td><td>{invention.Category}</td><td>{inventor}</td><td>{invention.DiscoveredDate.Year}</td>");
+            }
+        }
+
+        StateHasChanged();
+    }
+
+    private void ClearSearch()
+    {
+        _searchQuery = string.Empty;
+        _filterGender = string.Empty;
+        _filterStatus = string.Empty;
+        _filterMinAge = null;
+        _filterMaxAge = null;
+        _filterGeography = string.Empty;
+        _filterClimate = string.Empty;
+        _filterMinPopulation = null;
+        _searchResults = null;
+    }
+
+    // ============================================================================
+    // MAP VISUALIZATION FUNCTIONS
+    // ============================================================================
+
+    private string GetCityColor(City city)
+    {
+        if (_mapMode == "geography")
+        {
+            return city.Geography switch
+            {
+                "Coastal" => "#4169E1",      // Royal Blue
+                "Mountain" => "#8B4513",     // Saddle Brown
+                "Plains" => "#32CD32",       // Lime Green
+                "Desert" => "#F4A460",       // Sandy Brown
+                "Forest" => "#228B22",       // Forest Green
+                "RiverValley" => "#4682B4",  // Steel Blue
+                "Island" => "#20B2AA",       // Light Sea Green
+                _ => "#808080"               // Gray
+            };
+        }
+        else if (_mapMode == "climate")
+        {
+            return city.Climate switch
+            {
+                "Tropical" => "#FF6347",     // Tomato
+                "Temperate" => "#90EE90",    // Light Green
+                "Arid" => "#DEB887",         // Burly Wood
+                "Arctic" => "#B0E0E6",       // Powder Blue
+                "Mediterranean" => "#FFD700", // Gold
+                _ => "#808080"               // Gray
+            };
+        }
+        else // population mode
+        {
+            // Gradient from green (low) to red (high)
+            var ratio = Math.Min(1.0, city.Population / 1000.0);
+            var red = (int)(255 * ratio);
+            var green = (int)(255 * (1 - ratio));
+            return $"rgb({red}, {green}, 0)";
+        }
     }
 
     private RenderFragment RenderFamilyTreeWithIndent(FamilyTreeNode node, int depth)
@@ -393,6 +1346,7 @@
         SimulatorService.OnStatsUpdated -= HandleStatsUpdated;
         SimulatorService.OnSpeedChanged -= HandleSpeedChanged;
         SimulatorService.OnSimulationRestarted -= HandleSimulationRestarted;
+        SimulatorService.OnPausedChanged -= HandlePausedChanged;
     }
 }
 
