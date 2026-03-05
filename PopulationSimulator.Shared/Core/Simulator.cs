@@ -36,15 +36,17 @@ public class Simulator
     private int _syncCounter = 0;
     private const int SYNC_INTERVAL = 100; // Sync every 100 days
     private bool _livingCacheValid = false;
+    private int _lifespanBonus = 0; // Cumulative lifespan bonus from all discovered inventions
+    private const int MAX_LINEAGE_DEPTH = 50; // Max recursion depth for family tree traversal
 
     private long? _adamId;
     private long? _eveId;
     
-    public Simulator()
+    public Simulator(string databasePath = "population.db")
     {
         _random = new Random();
         _nameGenerator = new NameGenerator(_random);
-        _dataAccess = new DataAccessLayer();
+        _dataAccess = new DataAccessLayer(databasePath);
         _currentDay = 0; // Start at year 1, day 1
     }
     
@@ -426,8 +428,7 @@ public class Simulator
         }
 
         // Calculate total lifespan bonus from all inventions
-        //int lifespanBonus = _inventions.Sum(i => i.LifespanBonus);
-        int effectiveAge = Math.Max(0, age - lifespanBonus);
+        int effectiveAge = Math.Max(0, age - _lifespanBonus);
 
         // Base death chance per day - significantly reduced for young people
         double baseChance = effectiveAge switch
@@ -1131,11 +1132,13 @@ public class Simulator
             }
         }
         
-        lifespanBonus = _inventions.Sum(i => i.LifespanBonus);
+        // Update cumulative lifespan bonus from all discoveries
+        _lifespanBonus = 0;
+        foreach (var inv in _inventions)
+            _lifespanBonus += inv.LifespanBonus;
 
         LogEvent("Invention", $"{inventor.FirstName} {inventor.LastName} discovered {invention.Name}", inventor.Id);
     }
-    private int lifespanBonus;// = _inventions.Sum(i => i.LifespanBonus);
     private void StartWar()
     {
         if (_countries.Count < 2) return;
@@ -1318,7 +1321,7 @@ public class Simulator
                     Followers = r.Followers, 
                     Year = DayToYear(r.FoundedDay) 
                 }).ToList(),
-                Inventions = _inventions.OrderBy(i => i.DiscoveredDay).Take(15).Select(i => new InventionInfo 
+                Inventions = _inventions.OrderByDescending(i => i.DiscoveredDay).Take(15).Select(i => new InventionInfo 
                 { 
                     Name = i.Name, 
                     Category = i.Category, 
@@ -1457,8 +1460,10 @@ public class Simulator
         return trees;
     }
     
-    private bool HasLivingDescendants(long personId, List<Person> livingPeople)
+    private bool HasLivingDescendants(long personId, List<Person> livingPeople, int depth = 0)
     {
+        if (depth > MAX_LINEAGE_DEPTH) return false; // Guard against stack overflow in very deep lineages
+        
         // Check if any living person has this person as parent - using O(1) lookup
         var children = GetChildrenOfPerson(personId);
         
@@ -1468,15 +1473,17 @@ public class Simulator
                 return true;
             
             // Check descendants recursively
-            if (HasLivingDescendants(child.Id, livingPeople))
+            if (HasLivingDescendants(child.Id, livingPeople, depth + 1))
                 return true;
         }
         
         return false;
     }
     
-    private int CountLivingDescendants(long personId)
+    private int CountLivingDescendants(long personId, int depth = 0)
     {
+        if (depth > MAX_LINEAGE_DEPTH) return 0; // Guard against stack overflow in very deep lineages
+        
         // Get all children using O(1) lookup instead of LINQ
         var children = GetChildrenOfPerson(personId);
         
@@ -1489,7 +1496,7 @@ public class Simulator
                 count++;
             
             // Count descendants recursively
-            count += CountLivingDescendants(child.Id);
+            count += CountLivingDescendants(child.Id, depth + 1);
         }
         
         return count;
@@ -1543,14 +1550,17 @@ public class Simulator
         if (!person.SpouseId.HasValue)
             return string.Empty;
         
-        // Check living people first
+        // Check _peopleById (contains both living and dead people)
         if (_peopleById.ContainsKey(person.SpouseId.Value))
         {
             var spouse = _peopleById[person.SpouseId.Value];
-            return $"{spouse.FirstName} {spouse.LastName}";
+            if (spouse.IsAlive)
+                return $"{spouse.FirstName} {spouse.LastName}";
+            else
+                return $"{spouse.FirstName} {spouse.LastName} †";
         }
         
-        // Check dead people
+        // Check dead people dictionary as fallback
         if (_deadPeopleById.ContainsKey(person.SpouseId.Value))
         {
             var spouse = _deadPeopleById[person.SpouseId.Value];

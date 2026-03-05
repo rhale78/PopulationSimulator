@@ -17,6 +17,11 @@ public class DataAccessLayer
         using var connection = new SqliteConnection(_connectionString);
         connection.Open();
         
+        // Migrate existing database from DateTime (TEXT) to int (INTEGER) columns
+        // Must be done BEFORE CREATE TABLE IF NOT EXISTS so old tables are dropped first,
+        // allowing the CREATE TABLE statements below to recreate them with the new schema.
+        MigrateDateTimeToInt(connection);
+        
         var command = connection.CreateCommand();
         command.CommandText = @"
             CREATE TABLE IF NOT EXISTS People (
@@ -162,10 +167,6 @@ public class DataAccessLayer
             );
         ";
         command.ExecuteNonQuery();
-        
-        // Migrate existing database from DateTime (TEXT) to int (INTEGER) columns
-        // Check if old column names exist and migrate if needed
-        MigrateDateTimeToInt(connection);
         
         // Migrate existing Inventions table to add HealthBonus and LifespanBonus if they don't exist
         try

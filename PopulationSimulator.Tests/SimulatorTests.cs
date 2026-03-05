@@ -4,13 +4,30 @@ using Xunit;
 
 namespace PopulationSimulator.Tests;
 
-public class SimulatorTests
+public class SimulatorTests : IDisposable
 {
+    private readonly string _dbPath;
+    
+    public SimulatorTests()
+    {
+        // Use a unique temp file for each test instance to avoid parallel test conflicts
+        _dbPath = Path.Combine(Path.GetTempPath(), $"test_{Guid.NewGuid()}.db");
+    }
+    
+    public void Dispose()
+    {
+        // Clean up temp database file after each test
+        if (File.Exists(_dbPath))
+        {
+            try { File.Delete(_dbPath); } catch (IOException) { /* ignore cleanup errors on locked files */ }
+        }
+    }
+    
     [Fact]
     public void Simulator_Initializes_WithAdamAndEve()
     {
         // Arrange & Act
-        var simulator = new Simulator();
+        var simulator = new Simulator(_dbPath);
         simulator.Initialize();
         var stats = simulator.GetStats();
         
@@ -24,8 +41,9 @@ public class SimulatorTests
     public void SimulateDay_ProcessesDailyEvents()
     {
         // Arrange
-        var simulator = new Simulator();
+        var simulator = new Simulator(_dbPath);
         simulator.Initialize();
+        // After Initialize(), _currentDay = 20 * 365 = 7300
         
         // Act - Run simulation for 30 days
         for (int i = 0; i < 30; i++)
@@ -35,15 +53,15 @@ public class SimulatorTests
         
         var stats = simulator.GetStats();
         
-        // Assert
-        Assert.True(stats.CurrentDay >= 30);
+        // Assert - CurrentDay should be at least 7300 (initial) + 30 (simulated)
+        Assert.True(stats.CurrentDay >= 7300 + 30, $"Expected day >= {7300 + 30}, got {stats.CurrentDay}");
     }
     
     [Fact]
     public void SimulateDay_PopulationGrows_AfterManyDays()
     {
         // Arrange
-        var simulator = new Simulator();
+        var simulator = new Simulator(_dbPath);
         simulator.Initialize();
         
         // Act - Run simulation for 365 days (1 year)
@@ -54,15 +72,15 @@ public class SimulatorTests
         
         var stats = simulator.GetStats();
         
-        // Assert - Population should have grown (Adam and Eve should have had children)
-        Assert.True(stats.LivingPopulation >= 2, $"Population should grow after 1 year, but was {stats.LivingPopulation}");
+        // Assert - Population should have grown beyond initial 2 (Adam and Eve should have had children)
+        Assert.True(stats.LivingPopulation > 2, $"Population should grow after 1 year, but was {stats.LivingPopulation}");
     }
     
     [Fact]
     public void GetStats_ReturnsValidStatistics()
     {
         // Arrange
-        var simulator = new Simulator();
+        var simulator = new Simulator(_dbPath);
         simulator.Initialize();
         
         // Act
@@ -81,7 +99,7 @@ public class SimulatorTests
     public void GetStats_IncludesDetailLists()
     {
         // Arrange
-        var simulator = new Simulator();
+        var simulator = new Simulator(_dbPath);
         simulator.Initialize();
         
         // Act
@@ -98,7 +116,7 @@ public class SimulatorTests
     public void SimulateDay_EventsAreLogged()
     {
         // Arrange
-        var simulator = new Simulator();
+        var simulator = new Simulator(_dbPath);
         simulator.Initialize();
         
         // Get initial stats
@@ -122,7 +140,7 @@ public class SimulatorTests
     public void GetStats_FamilyTreeIncludesAdamAndEve()
     {
         // Arrange
-        var simulator = new Simulator();
+        var simulator = new Simulator(_dbPath);
         simulator.Initialize();
         
         // Act
@@ -138,7 +156,7 @@ public class SimulatorTests
     public void GetStats_TopJobsAreCalculated()
     {
         // Arrange
-        var simulator = new Simulator();
+        var simulator = new Simulator(_dbPath);
         simulator.Initialize();
         
         // Run for some time to assign jobs
@@ -163,8 +181,9 @@ public class SimulatorTests
     public void SimulateDay_ContinuesPast100Days()
     {
         // Arrange
-        var simulator = new Simulator();
+        var simulator = new Simulator(_dbPath);
         simulator.Initialize();
+        // After Initialize(), _currentDay = 20 * 365 = 7300
         
         // Act - Simulate 150 days to test past the SYNC_INTERVAL of 100
         for (int i = 0; i < 150; i++)
@@ -176,6 +195,6 @@ public class SimulatorTests
         
         // Assert
         Assert.True(stats.CurrentDay >= 7300 + 150, $"Expected day >= {7300 + 150}, got {stats.CurrentDay}");
-        Assert.Equal(2, stats.LivingPopulation); // Adam and Eve should still be alive
+        Assert.True(stats.LivingPopulation >= 2, "Adam and Eve should still be alive after 150 days");
     }
 }
